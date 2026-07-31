@@ -247,8 +247,15 @@ class MMAGoatApp {
           if (continueCard) continueCard.style.display = 'block';
           if (deleteBtn) deleteBtn.style.display = 'block';
 
-          document.getElementById('save-player-name').innerText = `${data.player.country?.flag || ''} ${data.player.name}`;
-          document.getElementById('save-player-details').innerText = `${data.player.organizationId.toUpperCase()} | Rekor: ${data.player.record.wins}-${data.player.record.losses} | $${data.player.money.toLocaleString()}`;
+          const flag = data.player.country?.flag || '';
+          const name = data.player.name || 'Dövüşçü';
+          document.getElementById('save-player-name').innerText = `${flag} ${name}`;
+
+          const orgId = data.player.organizationId ? data.player.organizationId.toUpperCase() : 'REGIONAL';
+          const wins = (data.player.record && data.player.record.wins !== undefined) ? data.player.record.wins : 0;
+          const losses = (data.player.record && data.player.record.losses !== undefined) ? data.player.record.losses : 0;
+          const money = data.player.money !== undefined ? data.player.money.toLocaleString() : '0';
+          document.getElementById('save-player-details').innerText = `${orgId} | Rekor: ${wins}-${losses} | $${money}`;
 
           // Calculate OVR from saved stats
           const values = Object.values(data.player.stats || {});
@@ -277,7 +284,12 @@ class MMAGoatApp {
         rerollsLeft: this.career.rerollsLeft,
         socialFeed: this.career.socialFeed,
         financialHistory: this.career.financialHistory,
-        rankings: this.career.rankings
+        rankings: this.career.rankings,
+        currentOpponent: this.career.currentOpponent,
+        matchOffers: this.career.matchOffers,
+        activeEvent: this.career.activeEvent,
+        weighInRequired: this.career.weighInRequired,
+        readyToFight: this.career.readyToFight
       },
       timestamp: Date.now()
     };
@@ -292,6 +304,9 @@ class MMAGoatApp {
 
     try {
       const data = JSON.parse(rawSave);
+      if (!data || !data.player) {
+        throw new Error('Kayıt verisi eksik veya bozuk.');
+      }
 
       // Reconstruct Fighter
       this.player = new Fighter(data.player);
@@ -299,21 +314,40 @@ class MMAGoatApp {
       // Reconstruct CareerManager
       this.career = new CareerManager(this.player, data.career);
       if (data.career) {
-        this.career.inFightCamp = data.career.inFightCamp;
-        this.career.campDay = data.career.campDay;
-        this.career.currentDayActivitiesLeft = data.career.currentDayActivitiesLeft;
+        this.career.inFightCamp = data.career.inFightCamp || false;
+        this.career.campDay = data.career.campDay || 1;
+        this.career.currentDayActivitiesLeft = data.career.currentDayActivitiesLeft !== undefined ? data.career.currentDayActivitiesLeft : 2;
         this.career.weeklySocialPostsLeft = data.career.weeklySocialPostsLeft !== undefined ? data.career.weeklySocialPostsLeft : 3;
         this.career.rerollsLeft = data.career.rerollsLeft !== undefined ? data.career.rerollsLeft : 2;
         this.career.socialFeed = data.career.socialFeed || [];
         this.career.financialHistory = data.career.financialHistory || [];
 
-        // Reconstruct ranking Fighter objects
+        // Reconstruct ranking Fighter objects safely
         if (data.career.rankings && Array.isArray(data.career.rankings)) {
-          this.career.rankings = data.career.rankings.map(rData => {
-            if (rData.id === this.player.id) return this.player;
-            return new Fighter(rData);
-          });
+          this.career.rankings = data.career.rankings
+            .filter(rData => rData !== null && rData !== undefined)
+            .map(rData => {
+              if (rData.id === this.player.id) return this.player;
+              return new Fighter(rData);
+            });
         }
+
+        // Reconstruct opponent and match offers safely
+        if (data.career.currentOpponent) {
+          this.career.currentOpponent = new Fighter(data.career.currentOpponent);
+        } else {
+          this.career.currentOpponent = null;
+        }
+
+        if (data.career.matchOffers && Array.isArray(data.career.matchOffers)) {
+          this.career.matchOffers = data.career.matchOffers
+            .filter(o => o !== null && o !== undefined)
+            .map(o => new Fighter(o));
+        }
+
+        this.career.activeEvent = data.career.activeEvent || null;
+        this.career.weighInRequired = data.career.weighInRequired || false;
+        this.career.readyToFight = data.career.readyToFight || false;
       }
 
       // Show header & nav tabs
@@ -326,7 +360,7 @@ class MMAGoatApp {
       return true;
     } catch (e) {
       console.error('Failed to load save file', e);
-      alert('Kayıtlı oyun yüklenirken hata oluştu.');
+      alert('Kayıtlı oyun yüklenirken hata oluştu: ' + e.message);
       return false;
     }
   }
@@ -571,7 +605,10 @@ class MMAGoatApp {
     document.getElementById('hdr-energy').innerText = `${this.player.energy}%`;
 
     // Profile Card
-    document.getElementById('dash-name').innerText = `${this.player.country.flag} ${this.player.name} (${this.player.age} ${isEn ? 'Yo' : 'Yaş'})`;
+    const ageStr = isEn 
+      ? `${this.player.age} Yo${this.player.ageMonths ? ` ${this.player.ageMonths} Mo` : ''}` 
+      : `${this.player.age} Yaş${this.player.ageMonths ? ` ${this.player.ageMonths} Ay` : ''}`;
+    document.getElementById('dash-name').innerText = `${this.player.country.flag} ${this.player.name} (${ageStr})`;
     const styleObj = FIGHT_STYLES[this.player.styleKey];
     document.getElementById('dash-style').innerText = (isEn && styleObj?.nameEn) ? styleObj.nameEn : (styleObj?.name || 'Fighter');
     document.getElementById('dash-ovr').innerText = this.player.getOverallRating();
@@ -1052,7 +1089,7 @@ class MMAGoatApp {
         </tr>
         <tr>
           <td colspan="5" style="text-align:center; font-size:0.75rem; color:var(--text-muted); padding:0.4rem;">
-            ${isEn ? '💡 To enter the pro rankings (#15), win 2 amateur fights in the regional promotion.' : '💡 Profesyonel lig sıralamasına (#15) girmek için bölgesel ligde 2 amatör galibiyet almanız gerekir.'}
+            ${isEn ? '💡 To enter the pro rankings (#30), win 7 amateur fights in the regional promotion.' : '💡 Profesyonel lig sıralamasına (#30) girmek için bölgesel ligde 7 amatör galibiyet almanız gerekir.'}
           </td>
         </tr>
       `;
@@ -1099,7 +1136,10 @@ class MMAGoatApp {
     // Fighter header
     document.getElementById('stats-fighter-name').innerText = `${this.player.country?.flag || ''} ${this.player.name}`;
     document.getElementById('stats-ovr').innerText = this.player.getOverallRating();
-    document.getElementById('stats-age').innerText = this.player.age;
+    const ageStrStats = isEn 
+      ? `${this.player.age} Yo${this.player.ageMonths ? ` ${this.player.ageMonths} Mo` : ''}` 
+      : `${this.player.age} Yaş${this.player.ageMonths ? ` ${this.player.ageMonths} Ay` : ''}`;
+    document.getElementById('stats-age').innerText = ageStrStats;
     const styleObj = FIGHT_STYLES[this.player.styleKey];
     document.getElementById('stats-style').innerText = (isEn && styleObj?.nameEn) ? styleObj.nameEn : (styleObj?.name || 'MMA');
 

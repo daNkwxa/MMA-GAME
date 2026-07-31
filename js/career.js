@@ -5,6 +5,7 @@ import { generateAIOpponent } from './fighter.js';
 
 export class CareerManager {
   constructor(playerFighter, config = {}) {
+    config = config || {};
     this.player = playerFighter;
 
     // Camp & Fight Prerequisites State

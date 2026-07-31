@@ -4,12 +4,14 @@ import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, FIRST_NAMES, LAST_NAMES } from
 
 export class Fighter {
   constructor(config = {}) {
+    config = config || {};
     this.id = config.id || 'player_' + Date.now();
     this.name = config.name || 'Dövüşçü';
     this.nickname = config.nickname || '';
     this.socialHandle = config.socialHandle || '@' + (config.name || 'dovuscu').toLowerCase().replace(/\s+/g, '');
     this.country = config.country || COUNTRIES[0];
     this.age = config.age || 18;
+    this.ageMonths = config.ageMonths || 0;
     this.styleKey = config.styleKey || 'boxer';
     this.weightClass = config.weightClass || 'lightweight';
     
@@ -95,17 +97,21 @@ export class Fighter {
   }
 
   applyAging() {
-    this.age += 1;
-    if (this.age > 30) {
-      this.maxEnergy = Math.max(70, this.maxEnergy - 2);
-    }
-    if (this.age > 35) {
-      // Natural stat decay for older fighters
-      Object.keys(this.stats).forEach(stat => {
-        if (['speed', 'cardio', 'strength'].includes(stat)) {
-          this.stats[stat] = Math.max(10, this.stats[stat] - Math.floor(Math.random() * 3 + 1));
-        }
-      });
+    this.ageMonths = (this.ageMonths || 0) + 6;
+    if (this.ageMonths >= 12) {
+      this.age += 1;
+      this.ageMonths = 0;
+      if (this.age > 30) {
+        this.maxEnergy = Math.max(70, this.maxEnergy - 2);
+      }
+      if (this.age > 35) {
+        // Natural stat decay for older fighters
+        Object.keys(this.stats).forEach(stat => {
+          if (['speed', 'cardio', 'strength'].includes(stat)) {
+            this.stats[stat] = Math.max(10, this.stats[stat] - Math.floor(Math.random() * 3 + 1));
+          }
+        });
+      }
     }
   }
 
@@ -126,10 +132,12 @@ export function generateAIOpponent(weightClass, orgTier = 1, rank = 10, isTitleF
   const styles = Object.keys(FIGHT_STYLES);
   const styleKey = styles[Math.floor(Math.random() * styles.length)];
 
+  const effectiveRank = rank >= 99 ? 30 : rank;
+
   // Target OVR based on org tier & rank (WCF / UFC tier 4 is elite challenging!)
-  let baseTargetOvr = 28 + orgTier * 10 + (30 - rank) * 1.1;
+  let baseTargetOvr = 28 + orgTier * 10 + (30 - effectiveRank) * 1.1;
   if (orgTier === 4) {
-    baseTargetOvr = 68 + (30 - rank) * 0.95; // WCF (UFC) OVR ranges 68 - 95+
+    baseTargetOvr = 68 + (30 - effectiveRank) * 0.95; // WCF (UFC) OVR ranges 68 - 95+
   }
   if (isTitleFight) baseTargetOvr += 8;
   baseTargetOvr = Math.min(97, Math.max(25, Math.round(baseTargetOvr)));
@@ -149,9 +157,17 @@ export function generateAIOpponent(weightClass, orgTier = 1, rank = 10, isTitleF
     }
   });
 
-  const totalFights = Math.max(2, Math.floor(orgTier * 4 + (15 - rank) * 1.5));
-  const wins = Math.max(1, Math.floor(totalFights * (0.65 + Math.random() * 0.25)));
-  const losses = totalFights - wins;
+  // Realistic professional fight history based on rank and organization tier
+  const totalFights = rank >= 99 
+    ? 2 
+    : Math.max(5, Math.floor(8 + orgTier * 3 + (30 - effectiveRank) * 0.8));
+  const winRatio = rank >= 99 
+    ? 0.5 
+    : (0.55 + ((30 - effectiveRank) / 30) * 0.3 + Math.random() * 0.1);
+  const wins = rank >= 99 
+    ? Math.max(1, Math.floor(totalFights * winRatio)) 
+    : Math.max(1, Math.floor(totalFights * Math.min(0.98, winRatio)));
+  const losses = Math.max(0, totalFights - wins);
 
   return new Fighter({
     name: `${firstName} ${lastName}`,
