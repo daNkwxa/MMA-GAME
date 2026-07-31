@@ -13,8 +13,8 @@
   --text-muted: #9ca3af;
   --font-heading: 'Rajdhani', sans-serif;
   --font-body: 'Outfit', sans-serif;
-  --header-h: calc(56px + env(safe-area-inset-top, 0px));
-  --nav-h: calc(58px + env(safe-area-inset-bottom, 0px));
+  --header-h: calc(74px + env(safe-area-inset-top, 0px));
+  --nav-h: calc(60px + env(safe-area-inset-bottom, 0px));
 }
 
 * {
@@ -47,13 +47,13 @@ header {
   background: rgba(10, 12, 16, 0.98);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--bg-card-border);
-  padding: 0 0.8rem;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding: 0 0.8rem 6px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 4px);
   height: var(--header-h);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 0.25rem;
+  justify-content: flex-end;
+  gap: 0.3rem;
   position: fixed;
   top: 0;
   left: 0;
@@ -113,9 +113,11 @@ main {
 /* When header is hidden (main menu / creation screen) */
 main.no-header {
   margin-top: 0;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
 }
 main.no-nav {
   margin-bottom: 0;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
 
 /* ===== SCREENS ===== */
@@ -271,15 +273,19 @@ main.no-nav {
   display: flex;
   justify-content: space-around;
   align-items: stretch;
-  padding: 0;
+  padding: 0 0.15rem;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.nav-tabs::-webkit-scrollbar { display: none; }
 
 .tab-btn {
-  flex: 1;
-  padding: 0.3rem 0.05rem;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.25rem 0.05rem;
   font-family: var(--font-heading);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 700;
   color: var(--text-muted);
   border: none;
@@ -292,7 +298,11 @@ main.no-nav {
   justify-content: center;
   gap: 0.1rem;
   transition: color 0.15s;
-  line-height: 1.2;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-tap-highlight-color: transparent;
 }
 .tab-btn.active {
   color: var(--accent-gold);
@@ -499,7 +509,7 @@ main.no-nav {
   background: #12161f;
   border: 1px solid var(--accent-gold);
   border-radius: 18px 18px 0 0;
-  padding: 1.2rem 1rem 1.4rem;
+  padding: 1.2rem 1rem calc(1.4rem + env(safe-area-inset-bottom, 0px));
   width: 100%;
   max-width: 520px;
   max-height: 90vh;
