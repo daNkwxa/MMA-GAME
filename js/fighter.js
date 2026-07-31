@@ -1,6 +1,6 @@
 // MMA GOAT - Fighter & AI Models
 
-import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, FIRST_NAMES, LAST_NAMES } from './data.js';
+import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, FIRST_NAMES, LAST_NAMES, GLOVES_CATALOG } from './data.js';
 
 export class Fighter {
   constructor(config = {}) {
@@ -65,7 +65,12 @@ export class Fighter {
     this.record = config.record || { wins: 0, losses: 0, draws: 0, koWins: 0, subWins: 0, decWins: 0 };
     this.fame = config.fame || 0;
     this.followers = config.followers || 50;
-    this.money = config.money || 300;
+    this.money = config.money !== undefined ? config.money : 300;
+    this.diamonds = config.diamonds !== undefined ? config.diamonds : 50;
+    this.hasNoAds = config.hasNoAds || false;
+    this.inventory = config.inventory || ['glove_default'];
+    this.equippedGlove = config.equippedGlove || 'glove_default';
+
     this.organizationId = config.organizationId || 'regional';
     this.rank = config.rank !== undefined ? config.rank : 99; // 99 = Unranked (Amatör / Sıralama Dışı)
     this.isChampion = config.isChampion || false;
@@ -77,8 +82,30 @@ export class Fighter {
     this.hiredCoaches = [];
   }
 
+  getEquippedGlove() {
+    const defaultGlove = GLOVES_CATALOG[0];
+    if (!this.equippedGlove) return defaultGlove;
+    return GLOVES_CATALOG.find(g => g.id === this.equippedGlove) || defaultGlove;
+  }
+
+  getEffectiveStats() {
+    const glove = this.getEquippedGlove();
+    const bonuses = glove && glove.bonuses ? glove.bonuses : {};
+    
+    const effective = { ...this.stats };
+    
+    if (bonuses.punchPct) effective.punch = Math.round(effective.punch * (1 + bonuses.punchPct / 100));
+    if (bonuses.kickPct) effective.kick = Math.round(effective.kick * (1 + bonuses.kickPct / 100));
+    if (bonuses.speedPct) effective.speed = Math.round(effective.speed * (1 + bonuses.speedPct / 100));
+    if (bonuses.cardioPct) effective.cardio = Math.round(effective.cardio * (1 + bonuses.cardioPct / 100));
+    if (bonuses.strengthPct) effective.strength = Math.round(effective.strength * (1 + bonuses.strengthPct / 100));
+    
+    return effective;
+  }
+
   getOverallRating() {
-    const values = Object.values(this.stats);
+    const effStats = this.getEffectiveStats();
+    const values = Object.values(effStats);
     const sum = values.reduce((acc, curr) => acc + curr, 0);
     return Math.round(sum / values.length);
   }

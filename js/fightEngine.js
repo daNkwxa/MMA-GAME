@@ -170,7 +170,7 @@ export class FightEngine {
   }
 
   calculateTacticEfficiency(fighter, tacticId, state) {
-    const s = fighter.stats;
+    const s = fighter.getEffectiveStats ? fighter.getEffectiveStats() : fighter.stats;
     let base = 50;
 
     switch (tacticId) {

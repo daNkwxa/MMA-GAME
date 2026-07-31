@@ -363,6 +363,10 @@ export class CareerManager {
       this.player.winStreak++;
       fameGained += 5;
 
+      // Diamond reward for winning fights (5 💎 base, 15 💎 title fight)
+      const diamondReward = this.player.isChampion || opponent.rank === 0 ? 15 : 5;
+      this.player.diamonds = (this.player.diamonds || 0) + diamondReward;
+
       if (fightResult.method === 'KO') this.player.record.koWins++;
       if (fightResult.method === 'Submission') this.player.record.subWins++;
       if (fightResult.method === 'Decision') this.player.record.decWins++;
@@ -416,8 +420,15 @@ export class CareerManager {
       }
     }
 
-    // Sort rankings array cleanly
-    this.rankings.sort((a, b) => a.rank - b.rank);
+    // Apply equipped glove gold bonus % and No-Ads VIP bonus %
+    const glove = this.player.getEquippedGlove ? this.player.getEquippedGlove() : null;
+    const gloveGoldPct = glove && glove.bonuses && glove.bonuses.goldPct ? glove.bonuses.goldPct : 0;
+    const vipBonusPct = this.player.hasNoAds ? 15 : 0;
+    const totalBonusPct = gloveGoldPct + vipBonusPct;
+
+    if (totalBonusPct > 0) {
+      totalEarned = Math.round(totalEarned * (1 + totalBonusPct / 100));
+    }
 
     this.player.money += totalEarned;
     this.player.fame = Math.min(100, this.player.fame + fameGained);

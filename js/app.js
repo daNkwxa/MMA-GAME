@@ -1,6 +1,6 @@
 // MMA GOAT - Main Application Orchestrator
 
-import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, ORGANIZATIONS, GYM_UPGRADES, WEIGHT_CUT_STRATEGIES, NUTRITION_ITEMS } from './data.js';
+import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, ORGANIZATIONS, GYM_UPGRADES, WEIGHT_CUT_STRATEGIES, NUTRITION_ITEMS, GLOVES_CATALOG, DIAMOND_PACKAGES, GOLD_EXCHANGE_PACKAGES } from './data.js';
 import { Fighter } from './fighter.js';
 import { CareerManager } from './career.js';
 import { FightEngine } from './fightEngine.js';
@@ -30,11 +30,12 @@ export const TRANSLATIONS = {
 
     tabDashboard: '🏠 Özeti',
     tabStats: '📊 Statlar',
+    tabGloves: '🥊 Eldiven',
     tabCamp: '🏋️ Kamp',
     tabOctagon: '🥊 Octagon',
     tabRankings: '🏆 Lig',
     tabSocial: '📱 Sosyal',
-    tabShop: '🏬 Salon',
+    tabShop: '🏬 Mağaza',
     tabLegacy: '👑 GOAT',
 
     energy: '⚡ Enerji',
@@ -108,6 +109,7 @@ export const TRANSLATIONS = {
 
     tabDashboard: '🏠 Dashboard',
     tabStats: '📊 Stats',
+    tabGloves: '🥊 Gloves',
     tabCamp: '🏋️ Camp',
     tabOctagon: '🥊 Octagon',
     tabRankings: '🏆 League',
@@ -584,6 +586,7 @@ class MMAGoatApp {
     if (screenId === 'screen-rankings') this.renderRankingsView();
     if (screenId === 'screen-social') this.renderSocialFeedView();
     if (screenId === 'screen-shop') this.renderShopView();
+    if (screenId === 'screen-gloves') this.renderGlovesView();
     if (screenId === 'screen-legacy') this.renderLegacyView();
     if (screenId === 'screen-stats') this.renderStatsView();
 
@@ -601,6 +604,8 @@ class MMAGoatApp {
     document.getElementById('hdr-weight').innerText = `${this.player.weightClass} (${rankText})`;
     document.getElementById('hdr-record').innerText = `${this.player.record.wins}-${this.player.record.losses}-${this.player.record.draws}`;
     document.getElementById('hdr-money').innerText = `$${this.player.money.toLocaleString()}`;
+    const diamondsEl = document.getElementById('hdr-diamonds');
+    if (diamondsEl) diamondsEl.innerText = (this.player.diamonds || 0).toLocaleString();
     document.getElementById('hdr-fame').innerText = isEn ? `Fame: ${this.player.fame}` : `Şöhret: ${this.player.fame}`;
     document.getElementById('hdr-energy').innerText = `${this.player.energy}%`;
 
@@ -1255,6 +1260,70 @@ class MMAGoatApp {
     if (!this.player) return;
     const isEn = this.lang === 'en';
 
+    const diaBalEl = document.getElementById('shop-diamond-balance');
+    if (diaBalEl) diaBalEl.innerText = (this.player.diamonds || 0).toLocaleString();
+
+    // 1. Diamond & Donation Packages
+    const diamondContainer = document.getElementById('diamond-packages-container');
+    if (diamondContainer) {
+      diamondContainer.innerHTML = DIAMOND_PACKAGES.map(pkg => {
+        const pName = isEn && pkg.nameEn ? pkg.nameEn : pkg.name;
+        const priceStr = isEn ? pkg.priceUSD : pkg.priceTL;
+        return `
+          <div class="glass-card" style="padding: 0.6rem; text-align: center; position: relative; border-color: ${pkg.popular ? 'var(--accent-cyan)' : 'var(--bg-card-border)'};">
+            ${pkg.badge ? `<span style="position: absolute; top: -8px; right: 8px; background: var(--accent-cyan); color: #000; font-size: 0.62rem; font-weight: 800; padding: 2px 6px; border-radius: 8px;">${pkg.badge}</span>` : ''}
+            <h4 style="font-size: 0.85rem; color: #fff; margin-bottom: 0.2rem;">${pName}</h4>
+            <div style="font-size: 1.2rem; font-weight: 800; color: var(--accent-cyan); margin: 0.4rem 0;">
+              +${pkg.amount} 💎
+            </div>
+            <button class="btn btn-cyan btn-sm" style="width: 100%; font-size: 0.8rem;" onclick="window.app.buyDiamondPackage('${pkg.id}')">
+              ${priceStr} ${isEn ? 'Buy' : 'Satın Al'}
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 2. No Ads & VIP Pass
+    const vipBox = document.getElementById('no-ads-vip-box');
+    if (vipBox) {
+      if (this.player.hasNoAds) {
+        vipBox.innerHTML = `
+          <span style="background: rgba(34, 197, 94, 0.2); border: 1px solid #22c55e; color: #22c55e; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 800; font-size: 0.85rem; display: inline-block;">
+            ✅ VIP AKTİF
+          </span>
+        `;
+      } else {
+        vipBox.innerHTML = `
+          <button class="btn btn-gold btn-sm" style="margin-bottom: 0.4rem; width: 100%;" onclick="window.app.buyNoAdsPass('diamonds')">
+            💎 150 Elmas
+          </button>
+          <button class="btn btn-secondary btn-sm" style="width: 100%; font-size: 0.75rem;" onclick="window.app.buyNoAdsPass('real')">
+            ₺49.99 / $1.99
+          </button>
+        `;
+      }
+    }
+
+    // 3. Gem to Gold Exchange
+    const exContainer = document.getElementById('gold-exchange-container');
+    if (exContainer) {
+      exContainer.innerHTML = GOLD_EXCHANGE_PACKAGES.map(ex => {
+        const eName = isEn && ex.nameEn ? ex.nameEn : ex.name;
+        return `
+          <div class="glass-card" style="padding: 0.6rem; text-align: center; border-color: var(--bg-card-border);">
+            <h4 style="font-size: 0.82rem; color: var(--accent-gold); margin-bottom: 0.2rem;">${eName}</h4>
+            <div style="font-size: 1.1rem; font-weight: 800; color: #fff; margin: 0.3rem 0;">
+              +$${ex.goldGain.toLocaleString()} 💰
+            </div>
+            <button class="btn btn-gold btn-sm" style="width: 100%;" onclick="window.app.exchangeDiamondsForGold('${ex.id}')">
+              💎 ${ex.diamondsCost} Elmas
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
     document.getElementById('shop-current-weight').innerText = `${this.player.walkWeight} kg`;
     document.getElementById('shop-target-weight').innerText = `${this.player.targetWeightKg} kg`;
 
@@ -1312,6 +1381,184 @@ class MMAGoatApp {
         `;
       }).join('');
     }
+  }
+
+  buyDiamondPackage(pkgId) {
+    const pkg = DIAMOND_PACKAGES.find(p => p.id === pkgId);
+    if (!pkg) return;
+    const isEn = this.lang === 'en';
+
+    sfx.playClick();
+    this.player.diamonds = (this.player.diamonds || 0) + pkg.amount;
+    this.saveGame();
+    this.updateHeaderAndDashboard();
+    this.renderShopView();
+
+    const pName = isEn && pkg.nameEn ? pkg.nameEn : pkg.name;
+    alert(isEn 
+      ? `💎 THANK YOU FOR SUPPORTING THE DEVELOPER!\n+${pkg.amount} Diamonds added to your account for ${pName}.`
+      : `💎 GELİŞTİRİCİYE DESTEK OLDUĞUNUZ İÇİN TEŞEKKÜRLER!\n${pName} satın alımı gerçekleştirildi. +${pkg.amount} Elmas hesabınıza eklendi!`
+    );
+  }
+
+  buyNoAdsPass(type) {
+    const isEn = this.lang === 'en';
+    if (this.player.hasNoAds) return;
+
+    if (type === 'diamonds') {
+      if ((this.player.diamonds || 0) < 150) {
+        alert(isEn ? 'Not enough diamonds! You need 150 💎.' : 'Yetersiz Elmas! 150 💎 Elmasınız olmalıdır.');
+        return;
+      }
+      this.player.diamonds -= 150;
+    }
+
+    sfx.playClick();
+    this.player.hasNoAds = true;
+    this.saveGame();
+    this.updateHeaderAndDashboard();
+    this.renderShopView();
+
+    alert(isEn 
+      ? '🛡️ VIP NO-ADS STATUS UNLOCKED!\nEnjoy ad-free gameplay and +15% extra gold reward on all fights!' 
+      : '🛡️ VIP REKLAMSIZ STATÜ AKTİF EDİLDİ!\nReklamsız oyun deneyimi ve tüm dövüşlerde +%15 ekstra altın ödülü tanımlandı!'
+    );
+  }
+
+  exchangeDiamondsForGold(exId) {
+    const ex = GOLD_EXCHANGE_PACKAGES.find(e => e.id === exId);
+    if (!ex) return;
+    const isEn = this.lang === 'en';
+
+    if ((this.player.diamonds || 0) < ex.diamondsCost) {
+      alert(isEn ? 'Insufficient diamonds!' : 'Yetersiz Elmas! Bu işlem için daha fazla elmasa ihtiyacınız var.');
+      return;
+    }
+
+    sfx.playClick();
+    this.player.diamonds -= ex.diamondsCost;
+    this.player.money += ex.goldGain;
+    this.saveGame();
+    this.updateHeaderAndDashboard();
+    this.renderShopView();
+
+    const eName = isEn && ex.nameEn ? ex.nameEn : ex.name;
+    alert(isEn 
+      ? `💱 EXCHANGED ${ex.diamondsCost} 💎 FOR $${ex.goldGain.toLocaleString()} 💰!\n${eName} credited.` 
+      : `💱 ${ex.diamondsCost} 💎 Elmas, $${ex.goldGain.toLocaleString()} 💰 Altın bakiyesine dönüştürüldü!\n${eName} hesabınıza aktarıldı.`
+    );
+  }
+
+  renderGlovesView() {
+    if (!this.player) return;
+    const isEn = this.lang === 'en';
+
+    const currentGlove = this.player.getEquippedGlove();
+    const summaryCard = document.getElementById('equipped-glove-summary-card');
+
+    if (summaryCard) {
+      const gName = isEn && currentGlove.nameEn ? currentGlove.nameEn : currentGlove.name;
+      const gDesc = isEn && currentGlove.descEn ? currentGlove.descEn : currentGlove.desc;
+      const rarityUpper = currentGlove.rarity.toUpperCase();
+
+      summaryCard.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; gap: 0.8rem; align-items: center;">
+            <div style="font-size: 2.2rem; background: rgba(0,0,0,0.3); padding: 0.4rem 0.8rem; border-radius: 12px; border: 1px solid ${currentGlove.color};">
+              ${currentGlove.icon}
+            </div>
+            <div>
+              <span class="rarity-badge rarity-${currentGlove.rarity}">${rarityUpper}</span>
+              <h3 style="font-size: 1.1rem; color: #fff; margin-top: 0.2rem;">${gName}</h3>
+              <p style="font-size: 0.78rem; color: var(--accent-cyan); font-weight: 600;">${gDesc}</p>
+            </div>
+          </div>
+          <div class="ovr-badge" style="border-color: ${currentGlove.color}; color: ${currentGlove.color};">
+            EQUIPPED
+          </div>
+        </div>
+      `;
+    }
+
+    const container = document.getElementById('gloves-catalog-container');
+    if (container) {
+      container.innerHTML = GLOVES_CATALOG.map(g => {
+        const isOwned = (this.player.inventory || []).includes(g.id);
+        const isEquipped = this.player.equippedGlove === g.id;
+        const gName = isEn && g.nameEn ? g.nameEn : g.name;
+        const gDesc = isEn && g.descEn ? g.descEn : g.desc;
+        const priceLabel = g.price === 0 ? (isEn ? 'Free' : 'Ücretsiz') : (g.currency === 'diamonds' ? `${g.price} 💎` : `$${g.price.toLocaleString()} 💰`);
+
+        let btnHtml = '';
+        if (isEquipped) {
+          btnHtml = `<button class="btn btn-sm" disabled style="width: 100%; opacity: 0.6; background: rgba(0,243,255,0.2); border: 1px solid var(--accent-cyan); color: var(--accent-cyan);">✅ KUŞANILDI</button>`;
+        } else if (isOwned) {
+          btnHtml = `<button class="btn btn-cyan btn-sm" style="width: 100%;" onclick="window.app.equipGlove('${g.id}')">🥋 GİY (EQUIP)</button>`;
+        } else {
+          btnHtml = `<button class="btn btn-gold btn-sm" style="width: 100%;" onclick="window.app.buyGlove('${g.id}')">🛒 ${isEn ? 'Buy' : 'Satın Al'} (${priceLabel})</button>`;
+        }
+
+        return `
+          <div class="glove-card ${isEquipped ? 'equipped' : ''}" style="border-color: ${g.color};">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem;">
+                <span style="font-size: 1.8rem;">${g.icon}</span>
+                <span class="rarity-badge rarity-${g.rarity}">${g.rarity}</span>
+              </div>
+              <h4 style="font-size: 0.92rem; color: #fff; margin-bottom: 0.2rem;">${gName}</h4>
+              <p style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 0.6rem; min-height: 2.2em;">${gDesc}</p>
+            </div>
+            <div>
+              ${btnHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  buyGlove(gloveId) {
+    const glove = GLOVES_CATALOG.find(g => g.id === gloveId);
+    if (!glove || !this.player) return;
+    const isEn = this.lang === 'en';
+
+    if (glove.currency === 'diamonds') {
+      if ((this.player.diamonds || 0) < glove.price) {
+        alert(isEn ? 'Insufficient diamonds!' : 'Yetersiz Elmas! Bu eldiveni satın almak için daha fazla elmasa ihtiyacınız var.');
+        return;
+      }
+      this.player.diamonds -= glove.price;
+    } else {
+      if (this.player.money < glove.price) {
+        alert(isEn ? 'Insufficient funds!' : 'Yetersiz Bakiye! Bu eldiveni almak için yeterli altınınız yok.');
+        return;
+      }
+      this.player.money -= glove.price;
+    }
+
+    sfx.playClick();
+    if (!this.player.inventory) this.player.inventory = ['glove_default'];
+    if (!this.player.inventory.includes(gloveId)) {
+      this.player.inventory.push(gloveId);
+    }
+    this.player.equippedGlove = gloveId;
+
+    this.saveGame();
+    this.updateHeaderAndDashboard();
+    this.renderGlovesView();
+
+    const gName = isEn && glove.nameEn ? glove.nameEn : glove.name;
+    alert(isEn ? `🥊 ${gName} purchased and equipped!` : `🥊 ${gName} satın alındı ve karakterinize kuşanıldı!`);
+  }
+
+  equipGlove(gloveId) {
+    if (!this.player || !this.player.inventory || !this.player.inventory.includes(gloveId)) return;
+    sfx.playClick();
+    this.player.equippedGlove = gloveId;
+
+    this.saveGame();
+    this.updateHeaderAndDashboard();
+    this.renderGlovesView();
   }
 
   buyNutrition(itemId) {

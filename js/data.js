@@ -293,3 +293,100 @@ export const COACH_STAFF = [
   { id: 'bjj_blackbelt', name: 'Master Gracie', type: 'Grappling', costPerFight: 3500, bonus: 8, description: '+8 Submission/Clinch verimi.', descriptionEn: '+8 Submission/Clinch efficiency.' },
   { id: 'legendary_headcoach', name: 'Coach Firas', type: 'Head Coach', costPerFight: 12000, bonus: 15, description: 'Tüm stat gelişimlerine +15 verim & Fight IQ boost.', descriptionEn: '+15 efficiency to all stat gains & Fight IQ boost.' }
 ];
+
+export const GLOVES_CATALOG = [
+  {
+    id: 'glove_default',
+    name: 'Standart Çaylak Eldiveni',
+    nameEn: 'Standard Rookie Gloves',
+    icon: '🥊',
+    rarity: 'common',
+    currency: 'gold',
+    price: 0,
+    color: '#8b949e',
+    bonuses: { punchPct: 0, kickPct: 0, speedPct: 0, cardioPct: 0, goldPct: 0 },
+    desc: 'Başlangıç seviye standart eldiven. Özel bonusu yoktur.',
+    descEn: 'Basic rookie gloves. No extra bonuses.'
+  },
+  {
+    id: 'glove_sparring',
+    name: 'Deri Antrenman Eldiveni',
+    nameEn: 'Leather Sparring Gloves',
+    icon: '🥊',
+    rarity: 'common',
+    currency: 'gold',
+    price: 1500,
+    color: '#3b82f6',
+    bonuses: { punchPct: 5, speedPct: 3 },
+    desc: '+%5 Yumruk Gücü, +%3 Vuruş Hızı',
+    descEn: '+5% Punch Power, +3% Speed'
+  },
+  {
+    id: 'glove_pro_striker',
+    name: 'Pro Striker Dövüş Eldiveni',
+    nameEn: 'Pro Striker Fight Gloves',
+    icon: '🥊',
+    rarity: 'rare',
+    currency: 'gold',
+    price: 8000,
+    color: '#a855f7',
+    bonuses: { punchPct: 10, kickPct: 5, speedPct: 5 },
+    desc: '+%10 Yumruk Gücü, +%5 Tekme, +%5 Hız',
+    descEn: '+10% Punch Power, +5% Kick, +5% Speed'
+  },
+  {
+    id: 'glove_titanium',
+    name: 'Titanium Grip Eldiven',
+    nameEn: 'Titanium Grip Gloves',
+    icon: '🥊',
+    rarity: 'epic',
+    currency: 'diamonds',
+    price: 45,
+    color: '#00f3ff',
+    bonuses: { punchPct: 15, strengthPct: 10, goldPct: 10 },
+    desc: '+%15 Yumruk Gücü, +%10 Fiziksel Güç, +%10 Dövüş Ödülü Altın',
+    descEn: '+15% Punch Power, +10% Strength, +10% Fight Gold'
+  },
+  {
+    id: 'glove_gold_champion',
+    name: 'Altın Kaplama Şampiyon Eldiveni',
+    nameEn: 'Gold Champion Gloves',
+    icon: '🏆',
+    rarity: 'legendary',
+    currency: 'diamonds',
+    price: 120,
+    color: '#ffd700',
+    bonuses: { punchPct: 20, kickPct: 15, cardioPct: 10, goldPct: 20 },
+    desc: '+%20 Yumruk, +%15 Tekme, +%10 Kondisyon, +%20 Dövüş Ödülü Altın',
+    descEn: '+20% Punch, +15% Kick, +10% Cardio, +20% Fight Gold'
+  },
+  {
+    id: 'glove_mythic_dragon',
+    name: 'Ejderha Alevi Mythic Eldiven',
+    nameEn: 'Dragon Flame Mythic Gloves',
+    icon: '🔥',
+    rarity: 'mythic',
+    currency: 'diamonds',
+    price: 300,
+    color: '#ff2a5f',
+    bonuses: { punchPct: 30, kickPct: 25, speedPct: 20, cardioPct: 15, goldPct: 35 },
+    desc: '+%30 Yumruk, +%25 Tekme, +%20 Hız, +%15 Kondisyon, +%35 Ekstra Altın!',
+    descEn: '+30% Punch, +25% Kick, +20% Speed, +15% Cardio, +35% Extra Gold!'
+  }
+];
+
+export const DIAMOND_PACKAGES = [
+  { id: 'coffee', name: '☕ Geliştiriciye Kahve Ismarla', nameEn: '☕ Buy Dev a Coffee', amount: 30, priceTL: '₺14.99', priceUSD: '$0.49', popular: false, badge: '❤️ Destek' },
+  { id: 'diamonds_small', name: '💎 Küçük Elmas Torbası', nameEn: '💎 Small Diamond Pouch', amount: 100, priceTL: '₺29.99', priceUSD: '$0.99', popular: false, badge: '' },
+  { id: 'diamonds_medium', name: '💎 Orta Elmas Sandığı', nameEn: '💎 Medium Diamond Chest', amount: 350, priceTL: '₺79.99', priceUSD: '$2.49', popular: true, badge: '🔥 En Çok Satan' },
+  { id: 'diamonds_large', name: '💎 Büyük Elmas Kasası', nameEn: '💎 Large Diamond Safe', amount: 1000, priceTL: '₺199.99', priceUSD: '$5.99', popular: false, badge: '⭐ %20 Ekstra' },
+  { id: 'diamonds_huge', name: '💎 Efsanevî Elmas Zulası', nameEn: '💎 Mythic Diamond Vault', amount: 2500, priceTL: '₺449.99', priceUSD: '$12.99', popular: false, badge: '👑 VIP Bonus' }
+];
+
+export const GOLD_EXCHANGE_PACKAGES = [
+  { id: 'ex_small', diamondsCost: 15, goldGain: 3500, name: '💰 Mahalle Bütçesi', nameEn: '💰 Starter Purse' },
+  { id: 'ex_medium', diamondsCost: 45, goldGain: 12000, name: '💰 Profesyonel Sözleşme Primi', nameEn: '💰 Pro Contract Bonus' },
+  { id: 'ex_large', diamondsCost: 120, goldGain: 40000, name: '💰 Şampiyonluk İkramiyesi', nameEn: '💰 Championship Purse' },
+  { id: 'ex_huge', diamondsCost: 300, goldGain: 120000, name: '💰 Milyoner Dövüşçü Kasası', nameEn: '💰 Millionaire Fighter Vault' }
+];
+
