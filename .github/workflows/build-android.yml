@@ -33,11 +33,8 @@ jobs:
       - name: Capacitor CLI global kur
         run: npm install -g @capacitor/cli
 
-      - name: Android platformunu ekle (yoksa)
-        run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
+      - name: Capacitor Android paketini kur
+        run: npm install @capacitor/android
 
       - name: Capacitor sync
         run: npx cap sync android
