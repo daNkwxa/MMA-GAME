@@ -1,6 +1,6 @@
 // MMA GOAT - Fighter & AI Models
 
-import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, FIRST_NAMES, LAST_NAMES, GLOVES_CATALOG } from './data.js';
+import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, FIRST_NAMES, LAST_NAMES, GLOVES_CATALOG, AI_ARCHETYPES } from './data.js';
 
 export class Fighter {
   constructor(config = {}) {
@@ -21,6 +21,10 @@ export class Fighter {
     // Walk-around weight is typically ~3.5 - 4.5 kg above limit
     this.walkWeight = config.walkWeight || Number((this.targetWeightKg + 3.8).toFixed(1));
     this.currentWeight = config.currentWeight || this.walkWeight;
+
+    // Weight Class Adaptation & Penalties (Feature 9)
+    this.weightAdaptationFightsLeft = config.weightAdaptationFightsLeft || 0;
+    this.weightPenaltyType = config.weightPenaltyType || null; // 'speed_loss', 'stamina_loss', 'severe_recovery'
 
     // Base Stats from Style or Config
     const styleData = FIGHT_STYLES[this.styleKey];
@@ -43,6 +47,20 @@ export class Fighter {
       mental: config.stats?.mental !== undefined ? config.stats.mental : defaultStats.mental
     };
 
+    // Manual Stat Point Allocation (Feature 2 & 8)
+    this.skillPoints = config.skillPoints !== undefined ? config.skillPoints : 0;
+    this.allocatedStats = config.allocatedStats || {};
+
+    // AI Traits & Archetype (Feature 1)
+    this.archetypeKey = config.archetypeKey || this.getDefaultArchetypeForStyle(this.styleKey);
+    const archObj = AI_ARCHETYPES[this.archetypeKey] || AI_ARCHETYPES.pressure_fighter;
+    this.aggression = config.aggression !== undefined ? config.aggression : archObj.aggression;
+    this.preferredRange = config.preferredRange || archObj.preferredRange;
+    this.cardioManagement = config.cardioManagement || archObj.cardioManagement;
+    this.riskTolerance = config.riskTolerance !== undefined ? config.riskTolerance : archObj.riskTolerance;
+    this.finishInstinct = config.finishInstinct !== undefined ? config.finishInstinct : archObj.finishInstinct;
+    this.defensiveStyle = config.defensiveStyle || archObj.defensiveStyle;
+
     // Appearance & Gear
     this.appearance = config.appearance || {
       hair: 'short',
@@ -61,12 +79,16 @@ export class Fighter {
     this.confidence = 50;
     this.injuries = config.injuries || [];
     
-    // Career Record & Achievements (Starts at Amatör Regional)
+    // Career Record & Achievements
     this.record = config.record || { wins: 0, losses: 0, draws: 0, koWins: 0, subWins: 0, decWins: 0 };
+    this.amateurRecord = config.amateurRecord || { wins: 0, losses: 0, draws: 0, koWins: 0, subWins: 0, decWins: 0 };
+    this.amateurFightCount = config.amateurFightCount || 0;
+    this.isAmateur = config.isAmateur !== undefined ? config.isAmateur : (config.rank === 99 || config.rank === undefined);
+
     this.fame = config.fame || 0;
     this.followers = config.followers || 50;
     this.money = config.money !== undefined ? config.money : 300;
-    this.diamonds = config.diamonds !== undefined ? config.diamonds : 50;
+    this.diamonds = config.diamonds !== undefined ? config.diamonds : 5;
     this.hasNoAds = config.hasNoAds || false;
     this.inventory = config.inventory || ['glove_default'];
     this.equippedGlove = config.equippedGlove || 'glove_default';
@@ -80,6 +102,42 @@ export class Fighter {
     // Upgrades
     this.gymTier = 1;
     this.hiredCoaches = [];
+  }
+
+  getDefaultArchetypeForStyle(styleKey) {
+    switch (styleKey) {
+      case 'boxer': return 'counter_fighter';
+      case 'kickboxer': return 'technical_striker';
+      case 'wrestler': return 'wrestler';
+      case 'bjj': return 'grappler';
+      case 'muaythai': return 'pressure_fighter';
+      default: return 'wild_brawler';
+    }
+  }
+
+  getStatUpgradeCost(statKey) {
+    const currentVal = this.stats[statKey] || 20;
+    if (currentVal >= 99) return Infinity; // Hard cap 99
+    if (currentVal < 50) return 1;
+    if (currentVal < 75) return 2; // Soft cap 75 starts increasing costs
+    if (currentVal < 90) return 3;
+    return 4;
+  }
+
+  allocateSkillPoint(statKey, count = 1) {
+    let successCount = 0;
+    for (let i = 0; i < count; i++) {
+      const cost = this.getStatUpgradeCost(statKey);
+      if (this.skillPoints >= cost && (this.stats[statKey] || 0) < 99) {
+        this.skillPoints -= cost;
+        this.stats[statKey] = (this.stats[statKey] || 0) + 1;
+        this.allocatedStats[statKey] = (this.allocatedStats[statKey] || 0) + 1;
+        successCount++;
+      } else {
+        break;
+      }
+    }
+    return successCount;
   }
 
   getEquippedGlove() {
@@ -99,6 +157,18 @@ export class Fighter {
     if (bonuses.speedPct) effective.speed = Math.round(effective.speed * (1 + bonuses.speedPct / 100));
     if (bonuses.cardioPct) effective.cardio = Math.round(effective.cardio * (1 + bonuses.cardioPct / 100));
     if (bonuses.strengthPct) effective.strength = Math.round(effective.strength * (1 + bonuses.strengthPct / 100));
+
+    // Feature 9: Apply Weight Class Adaptation Penalties
+    if (this.weightAdaptationFightsLeft > 0) {
+      if (this.weightPenaltyType === 'speed_loss') {
+        effective.speed = Math.max(10, Math.round(effective.speed * 0.85)); // -15% speed penalty when moving up
+      } else if (this.weightPenaltyType === 'stamina_loss') {
+        effective.cardio = Math.max(10, Math.round(effective.cardio * 0.85)); // -15% stamina penalty when moving down
+      } else if (this.weightPenaltyType === 'severe_recovery') {
+        effective.speed = Math.max(10, Math.round(effective.speed * 0.88));
+        effective.cardio = Math.max(10, Math.round(effective.cardio * 0.88));
+      }
+    }
     
     return effective;
   }
@@ -152,47 +222,64 @@ export class Fighter {
   }
 }
 
-export function generateAIOpponent(weightClass, orgTier = 1, rank = 10, isTitleFight = false) {
+export function generateAIOpponent(weightClass, orgTier = 1, rank = 10, isTitleFight = false, amateurFightNum = 0) {
   const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
   const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
   const country = COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)];
   const styles = Object.keys(FIGHT_STYLES);
   const styleKey = styles[Math.floor(Math.random() * styles.length)];
 
+  const archKeys = Object.keys(AI_ARCHETYPES);
+  const archetypeKey = archKeys[Math.floor(Math.random() * archKeys.length)];
+
   const effectiveRank = rank >= 99 ? 30 : rank;
 
-  // Target OVR based on org tier & rank (WCF / UFC tier 4 is elite challenging!)
-  let baseTargetOvr = 28 + orgTier * 10 + (30 - effectiveRank) * 1.1;
-  if (orgTier === 4) {
-    baseTargetOvr = 68 + (30 - effectiveRank) * 0.95; // WCF (UFC) OVR ranges 68 - 95+
+  // Feature 4: Better Amateur Difficulty curve (Fight 1 Very Easy, 2 Easy, 3 Med, 4 Hard)
+  let baseTargetOvr = 22;
+  const isAmateurOpp = rank >= 99 || amateurFightNum > 0;
+
+  if (isAmateurOpp) {
+    if (amateurFightNum === 1) baseTargetOvr = 22; // Very Easy (~24-26 OVR)
+    else if (amateurFightNum === 2) baseTargetOvr = 26; // Easy (~28-30 OVR)
+    else if (amateurFightNum === 3) baseTargetOvr = 30; // Medium (~32-34 OVR)
+    else if (amateurFightNum >= 4) baseTargetOvr = 34; // Hard / Champ (~36-38 OVR)
+    else baseTargetOvr = 24 + Math.floor(Math.random() * 4);
+  } else {
+    // Target OVR based on org tier & rank (WCF / UFC tier 4 is elite challenging!)
+    baseTargetOvr = 28 + orgTier * 10 + (30 - effectiveRank) * 1.1;
+    if (orgTier === 4) {
+      baseTargetOvr = 68 + (30 - effectiveRank) * 0.95; // WCF OVR ranges 68 - 95+
+    }
+    if (isTitleFight) baseTargetOvr += 8;
   }
-  if (isTitleFight) baseTargetOvr += 8;
-  baseTargetOvr = Math.min(97, Math.max(25, Math.round(baseTargetOvr)));
+  baseTargetOvr = Math.min(97, Math.max(20, Math.round(baseTargetOvr)));
 
   const allStatKeys = ['punch', 'kick', 'clinch', 'wrestling', 'takedownDef', 'submission', 'cardio', 'strength', 'speed', 'fightIq', 'mental'];
   const stats = {};
   allStatKeys.forEach(st => {
-    const variance = Math.floor(Math.random() * 14) - 7;
-    stats[st] = Math.min(99, Math.max(20, baseTargetOvr + variance));
+    const variance = Math.floor(Math.random() * 6) - 3;
+    stats[st] = Math.min(99, Math.max(15, baseTargetOvr + variance));
   });
 
-  // Boost main stats according to fighter style baseStats
-  const styleBase = FIGHT_STYLES[styleKey]?.baseStats || {};
-  Object.keys(styleBase).forEach(st => {
-    if (styleBase[st] >= 30) {
-      stats[st] = Math.min(99, stats[st] + 12);
-    }
-  });
+  // Boost main stats according to fighter style baseStats (Only for pro fighters)
+  if (!isAmateurOpp) {
+    const styleBase = FIGHT_STYLES[styleKey]?.baseStats || {};
+    Object.keys(styleBase).forEach(st => {
+      if (styleBase[st] >= 30) {
+        stats[st] = Math.min(99, stats[st] + 6);
+      }
+    });
+  }
 
-  // Realistic professional fight history based on rank and organization tier
+  // Realistic fight history based on rank and organization tier
   const totalFights = rank >= 99 
-    ? 2 
+    ? Math.max(1, (amateurFightNum || 1) - 1 + Math.floor(Math.random() * 2)) 
     : Math.max(5, Math.floor(8 + orgTier * 3 + (30 - effectiveRank) * 0.8));
   const winRatio = rank >= 99 
     ? 0.5 
     : (0.55 + ((30 - effectiveRank) / 30) * 0.3 + Math.random() * 0.1);
   const wins = rank >= 99 
-    ? Math.max(1, Math.floor(totalFights * winRatio)) 
+    ? Math.max(0, Math.floor(totalFights * winRatio)) 
     : Math.max(1, Math.floor(totalFights * Math.min(0.98, winRatio)));
   const losses = Math.max(0, totalFights - wins);
 
@@ -200,8 +287,9 @@ export function generateAIOpponent(weightClass, orgTier = 1, rank = 10, isTitleF
     name: `${firstName} ${lastName}`,
     nickname: Math.random() > 0.6 ? `'The Machine'` : '',
     country: country,
-    age: Math.floor(Math.random() * 12) + 20,
+    age: Math.floor(Math.random() * 10) + 19,
     styleKey: styleKey,
+    archetypeKey: archetypeKey,
     weightClass: weightClass,
     stats: stats,
     skipStyleBonuses: true,
@@ -214,6 +302,8 @@ export function generateAIOpponent(weightClass, orgTier = 1, rank = 10, isTitleF
       decWins: Math.floor(wins * 0.2)
     },
     rank: rank,
-    isChampion: rank === 0
+    isChampion: rank === 0,
+    isAmateur: rank >= 99
   });
 }
+

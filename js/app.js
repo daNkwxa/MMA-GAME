@@ -4,6 +4,7 @@ import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, ORGANIZATIONS, GYM_UPGRADES, W
 import { Fighter } from './fighter.js';
 import { CareerManager } from './career.js';
 import { FightEngine } from './fightEngine.js';
+import { AdManager } from './adManager.js';
 import { sfx } from './audio.js';
 
 const SAVE_KEY = 'mma_goat_save_v2';
@@ -86,7 +87,34 @@ export const TRANSLATIONS = {
     subWins: 'Pes Ettirme Zaferleri:',
     titleBelts: 'Şampiyonluk Kemer Sayısı:',
     titleDefenses: 'Kemer Savunmaları:',
-    totalWealth: 'Toplam Servet:'
+    totalWealth: 'Toplam Servet:',
+
+    rankHeadRank: 'Sıra',
+    rankHeadFighter: 'Dövüşçü',
+    rankHeadStyle: 'Stil',
+    rankHeadRecord: 'Rekor',
+    rankHeadOvr: 'OVR',
+
+    btnRankPro: '👑 Profesyonel',
+    btnRankAmateur: '🥊 Amatör Lig',
+
+    statsTitle: '📊 Dövüşçü Statları & Nitelikleri',
+    statsFighterLabel: 'Dövüşçü',
+    spBannerText: '✨ Kullanılabilir Yetenek Puanı (Skill Points):',
+    spBannerDesc: 'Puanlar kampa katılarak kazanılır. Yüksek statlar daha fazla SP gerektirir (Soft Cap: 75).',
+    careerSummaryTitle: '🏆 Kariyer Özeti',
+
+    shopDiamondsTitle: '💎 Elmas & Geliştiriciye Bağış Mağazası',
+    shopDiamondsDesc: 'Oyunu desteklemek ve efsanevî eldivenler, altın takasları ve VIP ayrıcalıklar açmak için Elmas paketlerini tercih edebilirsiniz:',
+    shopVipTitle: '🛡️ Reklam Engelleme & VIP Dövüşçü Statüsü',
+    shopVipDesc: '• Reklamsız Kesintisiz Deneyim<br>• Dövüş Kazanımlarında <strong>+%15 Ekstra Altın Bonusu</strong><br>• VIP Profil Rozeti & Altın İsim Parlaması',
+    shopExchangeTitle: '💱 Döviz Bürosu (Elmas ➔ Altın Takası)',
+    shopExchangeDesc: 'Elmaslarınızı anında oyun içi nakit paraya (💰) dönüştürebilirsiniz:',
+    shopGymTitle: '🏬 Salon & Tesis Yükseltmeleri',
+    balance: 'Bakiye',
+
+    glovesTitle: '🥊 Eldiven Ekipman Mağazası & Soyunma Odası',
+    glovesDesc: 'Eldivenler dövüşte % Stat Bonusu verir'
   },
   en: {
     mainTitle: '🥊 MMA GOAT',
@@ -165,7 +193,34 @@ export const TRANSLATIONS = {
     subWins: 'Submission Victories:',
     titleBelts: 'Title Belts Held:',
     titleDefenses: 'Title Defenses:',
-    totalWealth: 'Total Wealth:'
+    totalWealth: 'Total Wealth:',
+
+    rankHeadRank: 'Rank',
+    rankHeadFighter: 'Fighter',
+    rankHeadStyle: 'Style',
+    rankHeadRecord: 'Record',
+    rankHeadOvr: 'OVR',
+
+    btnRankPro: '👑 Professional',
+    btnRankAmateur: '🥊 Amateur League',
+
+    statsTitle: '📊 Fighter Stats & Attributes',
+    statsFighterLabel: 'Fighter',
+    spBannerText: '✨ Available Skill Points (SP):',
+    spBannerDesc: 'Points are earned in camp. Higher stats require more SP (Soft Cap: 75).',
+    careerSummaryTitle: '🏆 Career Summary',
+
+    shopDiamondsTitle: '💎 Diamond & Supporter Store',
+    shopDiamondsDesc: 'Support the game and unlock legendary gloves, gold exchanges, and VIP perks with Diamond packs:',
+    shopVipTitle: '🛡️ Ad-Free & VIP Fighter Pass',
+    shopVipDesc: '• Seamless Ad-Free Experience<br>• <strong>+15% Extra Gold Bonus</strong> on All Fight Earnings<br>• VIP Profile Badge & Gold Name Glow',
+    shopExchangeTitle: '💱 Exchange Bureau (Diamonds ➔ Gold)',
+    shopExchangeDesc: 'Convert your Diamonds into in-game Cash (💰) instantly:',
+    shopGymTitle: '🏬 Gym & Facility Upgrades',
+    balance: 'Balance',
+
+    glovesTitle: '🥊 Gloves Equipment Store & Locker',
+    glovesDesc: 'Gloves grant percentage Stat Bonuses in fights'
   }
 };
 
@@ -177,6 +232,7 @@ class MMAGoatApp {
     this.fightEngine = null;
     this.selectedStyleKey = 'boxer';
     this.lang = localStorage.getItem('mma_goat_lang') || 'tr';
+    this.adManager = new AdManager();
 
     this.initUI();
     this.checkExistingSave();
@@ -198,6 +254,7 @@ class MMAGoatApp {
       this.renderShopView();
       this.renderStatsView();
       this.renderLegacyView();
+      this.renderRankingsView();
       if (this.fightEngine) this.updateFightUI();
     }
   }
@@ -286,6 +343,8 @@ class MMAGoatApp {
         rerollsLeft: this.career.rerollsLeft,
         socialFeed: this.career.socialFeed,
         financialHistory: this.career.financialHistory,
+        activeSponsorships: this.career.activeSponsorships || [],
+        amateurRankings: this.career.amateurRankings || [],
         rankings: this.career.rankings,
         currentOpponent: this.career.currentOpponent,
         matchOffers: this.career.matchOffers,
@@ -323,8 +382,21 @@ class MMAGoatApp {
         this.career.rerollsLeft = data.career.rerollsLeft !== undefined ? data.career.rerollsLeft : 2;
         this.career.socialFeed = data.career.socialFeed || [];
         this.career.financialHistory = data.career.financialHistory || [];
+        this.career.activeSponsorships = data.career.activeSponsorships || [];
 
-        // Reconstruct ranking Fighter objects safely
+        // Reconstruct amateur rankings safely
+        if (data.career.amateurRankings && Array.isArray(data.career.amateurRankings)) {
+          this.career.amateurRankings = data.career.amateurRankings
+            .filter(rData => rData !== null && rData !== undefined)
+            .map(rData => {
+              if (rData.id === this.player.id) return this.player;
+              return new Fighter(rData);
+            });
+        } else {
+          this.career.amateurRankings = this.career.generateInitialAmateurRankings();
+        }
+
+        // Reconstruct pro ranking Fighter objects safely
         if (data.career.rankings && Array.isArray(data.career.rankings)) {
           this.career.rankings = data.career.rankings
             .filter(rData => rData !== null && rData !== undefined)
@@ -333,6 +405,7 @@ class MMAGoatApp {
               return new Fighter(rData);
             });
         }
+
 
         // Reconstruct opponent and match offers safely
         if (data.career.currentOpponent) {
@@ -599,14 +672,16 @@ class MMAGoatApp {
     const isEn = this.lang === 'en';
 
     // Header updates
-    const rankText = this.player.rank >= 99 ? (isEn ? 'Amateur' : 'Amatör') : (this.player.rank === 0 ? (isEn ? '👑 CHAMPION' : '👑 ŞAMPİYON') : `#${this.player.rank}`);
-    document.getElementById('hdr-org').innerText = this.player.organizationId.toUpperCase();
+    const rankText = this.player.isAmateur ? (isEn ? 'Amateur' : 'Amatör') : (this.player.rank === 0 ? (isEn ? '👑 CHAMPION' : '👑 ŞAMPİYON') : `#${this.player.rank}`);
+    document.getElementById('hdr-org').innerText = this.player.isAmateur ? (isEn ? 'AMATEUR' : 'AMATÖR') : this.player.organizationId.toUpperCase();
     document.getElementById('hdr-weight').innerText = `${this.player.weightClass} (${rankText})`;
-    document.getElementById('hdr-record').innerText = `${this.player.record.wins}-${this.player.record.losses}-${this.player.record.draws}`;
+    
+    const recObj = this.player.isAmateur ? (this.player.amateurRecord || { wins: 0, losses: 0, draws: 0 }) : this.player.record;
+    document.getElementById('hdr-record').innerText = `${recObj.wins}-${recObj.losses}-${recObj.draws || 0}`;
     document.getElementById('hdr-money').innerText = `$${this.player.money.toLocaleString()}`;
     const diamondsEl = document.getElementById('hdr-diamonds');
     if (diamondsEl) diamondsEl.innerText = (this.player.diamonds || 0).toLocaleString();
-    document.getElementById('hdr-fame').innerText = isEn ? `Fame: ${this.player.fame}` : `Şöhret: ${this.player.fame}`;
+    document.getElementById('hdr-fame').innerText = `${this.player.fame}`;
     document.getElementById('hdr-energy').innerText = `${this.player.energy}%`;
 
     // Profile Card
@@ -620,6 +695,9 @@ class MMAGoatApp {
 
     document.getElementById('dash-energy-bar').style.width = `${this.player.energy}%`;
     document.getElementById('dash-stress-bar').style.width = `${this.player.stress}%`;
+
+    // Render Feature 11: Dashboard Weight Management Card
+    this.renderDashboardWeightCard();
 
     // Render Next Fight OR 3 Match Offers
     const fightContainer = document.getElementById('dash-fight-container');
@@ -701,7 +779,7 @@ class MMAGoatApp {
               <div>
                 <div style="font-size: 0.85rem; font-weight: 700; color: #fff;">${opp.country.flag} ${opp.name}</div>
                 <div style="font-size: 0.72rem; color: var(--text-muted);">
-                  ${isEn ? 'Rank:' : 'Sıra:'} <strong style="color:var(--accent-gold);">#${opp.rank}</strong> | ${styleName} | OVR: ${opp.getOverallRating()} | (${opp.record.wins}-${opp.record.losses})
+                  ${isEn ? 'Rank:' : 'Sıra:'} <strong style="color:var(--accent-gold);">${opp.isAmateur ? 'Amatör' : '#' + opp.rank}</strong> | ${styleName} | OVR: ${opp.getOverallRating()} | (${opp.record.wins}-${opp.record.losses})
                 </div>
               </div>
               <button class="btn btn-gold btn-sm" onclick="window.app.acceptMatchOffer(${idx})">${isEn ? '🎯 Accept' : '🎯 Seç'}</button>
@@ -724,6 +802,164 @@ class MMAGoatApp {
         </div>
       `).join('');
     }
+
+    // Check and show active career event modal on Dashboard
+    if (this.career && this.career.activeEvent) {
+      setTimeout(() => {
+        this.showEventModal(this.career.activeEvent);
+      }, 300);
+    }
+  }
+
+  showWeighInModal() {
+    const modal = document.getElementById('weighin-modal');
+    if (!modal || !this.player) return;
+
+    const currentKg = this.player.currentWeight || (this.player.targetWeightKg + 3.8);
+    const targetKg = this.player.targetWeightKg;
+    const diffKg = Number((currentKg - targetKg).toFixed(1));
+
+    document.getElementById('weighin-current-kg').innerText = `${currentKg} kg`;
+    document.getElementById('weighin-target-kg').innerText = `${targetKg} kg`;
+    document.getElementById('weighin-diff-kg').innerText = diffKg > 0 ? `+${diffKg} kg` : `${diffKg} kg`;
+
+    document.getElementById('weighin-strategy-section').style.display = 'block';
+    document.getElementById('weighin-result-section').style.display = 'none';
+
+    const stratList = document.getElementById('weighin-strategies-list');
+    if (stratList) {
+      stratList.innerHTML = Object.keys(WEIGHT_CUT_STRATEGIES).map(key => {
+        const s = WEIGHT_CUT_STRATEGIES[key];
+        const sName = this.lang === 'en' && s.nameEn ? s.nameEn : s.name;
+        const sDesc = this.lang === 'en' && s.descEn ? s.descEn : s.desc;
+        return `
+          <div class="glass-card" style="cursor: pointer; transition: transform 0.2s; border-color: var(--accent-gold); margin-bottom: 0.5rem;" onclick="window.app.handleWeighInChoice('${key}')">
+            <h4 style="color: var(--accent-gold); margin-bottom: 0.3rem;">${sName}</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">${sDesc}</p>
+            <div style="font-size: 0.75rem; color: var(--accent-cyan);">⚡ Enerji Düşüşü: -${s.energyPenalty} | Tahmini Kilo Kaybı: ~${s.weightCutKg} kg</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  handleWeighInChoice(strategyKey) {
+    if (!this.career) return;
+    sfx.playClick();
+    const res = this.career.processWeighIn(strategyKey);
+    this.saveGame();
+
+    document.getElementById('weighin-strategy-section').style.display = 'none';
+    const resultSec = document.getElementById('weighin-result-section');
+    if (resultSec) resultSec.style.display = 'block';
+
+    const badge = document.getElementById('weighin-status-badge');
+    if (badge) {
+      if (res.passed) {
+        badge.style.background = 'rgba(34, 197, 94, 0.2)';
+        badge.style.border = '2px solid #22c55e';
+        badge.style.color = '#22c55e';
+        badge.innerText = '✅ TARTI PASSED (KİLO TUTTU)';
+      } else {
+        badge.style.background = 'rgba(239, 68, 68, 0.2)';
+        badge.style.border = '2px solid #ef4444';
+        badge.style.color = '#ef4444';
+        badge.innerText = '❌ TARTI KAÇIRILDI (MAÇ İPTAL)';
+      }
+    }
+
+    const txt = document.getElementById('weighin-result-text');
+    if (txt) txt.innerText = res.message;
+
+    const confirmBtn = document.getElementById('btn-weighin-confirm');
+    if (confirmBtn) {
+      confirmBtn.onclick = () => {
+        sfx.playClick();
+        const modal = document.getElementById('weighin-modal');
+        if (modal) modal.style.display = 'none';
+        this.updateHeaderAndDashboard();
+        if (res.passed) {
+          this.prepareOctagonView();
+          this.switchScreen('screen-octagon');
+        } else {
+          this.switchScreen('screen-dashboard');
+        }
+      };
+    }
+  }
+
+  // Feature 11: Render Dashboard Weight Class Card
+  renderDashboardWeightCard() {
+    const card = document.getElementById('dash-weight-card');
+    if (!card || !this.player) return;
+
+    const isEn = this.lang === 'en';
+    const wcObj = WEIGHT_CLASSES.find(w => w.id === this.player.weightClass) || WEIGHT_CLASSES[3];
+    const currentIndex = WEIGHT_CLASSES.findIndex(w => w.id === this.player.weightClass);
+
+    let statusBadge = '';
+    if (this.player.weightAdaptationFightsLeft > 0) {
+      let penaltyDesc = isEn ? '-15% Speed Penalty' : '-%15 Hız Cezası (Sıklet Üstü)';
+      if (this.player.weightPenaltyType === 'stamina_loss') {
+        penaltyDesc = isEn ? '-15% Stamina Penalty' : '-%15 Kondisyon Cezası (Kilo Kesimi)';
+      } else if (this.player.weightPenaltyType === 'severe_recovery') {
+        penaltyDesc = isEn ? '-12% Speed & Stamina' : '-%12 Hız & Kondisyon (Aşırı Geçiş)';
+      }
+
+      statusBadge = `
+        <div style="background: rgba(255,42,95,0.15); border: 1px solid var(--accent-red); border-radius: 6px; padding: 0.35rem 0.6rem; color: var(--accent-red); font-size: 0.78rem; font-weight: 700; margin-top: 0.4rem;">
+          ⚠️ ${isEn ? 'Weight Adaptation' : 'Sıklet Uyum Süresi'}: ${this.player.weightAdaptationFightsLeft} ${isEn ? 'fights left' : 'maç kaldı'} (${penaltyDesc})
+        </div>
+      `;
+    } else {
+      statusBadge = `
+        <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; border-radius: 6px; padding: 0.25rem 0.5rem; color: #22c55e; font-size: 0.75rem; font-weight: 700; margin-top: 0.4rem; display: inline-block;">
+          ✅ ${isEn ? 'Fully Adapted to Division' : 'Sıklete Tam Uyumlu'}
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">${isEn ? '⚖️ Division & Weight Target' : '⚖️ Siklet & Kilo Hedefi'}</span>
+          <h3 style="font-size: 1.05rem; color: var(--accent-cyan); margin: 0.1rem 0;">${wcObj.name} (${wcObj.limitKg} kg / ${wcObj.limitLbs} lbs)</h3>
+          <p style="font-size: 0.8rem; color: #fff;">
+            ${isEn ? 'Current Weight:' : 'Mevcut Kilo:'} <strong>${this.player.walkWeight} kg</strong> | ${isEn ? 'Target Limit:' : 'Limit:'} <strong>${wcObj.limitKg} kg</strong>
+          </p>
+        </div>
+        <div style="display: flex; gap: 0.3rem;">
+          <button class="btn btn-secondary btn-sm" onclick="window.app.changeWeightClassDashboard(-1)" ${currentIndex <= 0 ? 'disabled style="opacity:0.4;"' : ''}>
+            ⬇️ ${isEn ? 'Down' : 'Alt Siklet'}
+          </button>
+          <button class="btn btn-cyan btn-sm" onclick="window.app.changeWeightClassDashboard(1)" ${currentIndex >= WEIGHT_CLASSES.length - 1 ? 'disabled style="opacity:0.4;"' : ''}>
+            ⬆️ ${isEn ? 'Up' : 'Üst Siklet'}
+          </button>
+        </div>
+      </div>
+      ${statusBadge}
+    `;
+  }
+
+  changeWeightClassDashboard(direction) {
+    if (!this.career || !this.player) return;
+    const isEn = this.lang === 'en';
+    const currentIndex = WEIGHT_CLASSES.findIndex(w => w.id === this.player.weightClass);
+    const newIndex = currentIndex + direction;
+
+    if (newIndex < 0 || newIndex >= WEIGHT_CLASSES.length) return;
+
+    const targetWc = WEIGHT_CLASSES[newIndex];
+    sfx.playClick();
+    this.career.changeWeightClass(targetWc.id);
+    this.saveGame();
+    this.updateHeaderAndDashboard();
+    alert(isEn 
+      ? `⚖️ Division changed to ${targetWc.name} (${targetWc.limitKg} kg)!\nWeight adaptation period initiated (3 fights).`
+      : `⚖️ Sikletiniz ${targetWc.name} (${targetWc.limitKg} kg) olarak değiştirildi!\n3 maçlık sıklet uyum süreci başladı.`
+    );
   }
 
   acceptMatchOffer(index) {
@@ -750,20 +986,19 @@ class MMAGoatApp {
     this.updateHeaderAndDashboard();
   }
 
+  // Feature 10: Training Camp with Nutrition & Meal Plan
   updateCampView() {
     if (!this.career) return;
 
     const wrapper = document.getElementById('camp-card-wrapper');
     if (!wrapper) return;
 
-    // Case 1: Weigh-in modal is required right now
     if (this.career.weighInRequired) {
       this.switchScreen('screen-dashboard');
       this.showWeighInModal();
       return;
     }
 
-    // Case 2: No active fight camp
     if (!this.career.inFightCamp) {
       wrapper.innerHTML = `
         <div style="text-align: center; padding: 1.5rem 0.8rem;">
@@ -779,10 +1014,10 @@ class MMAGoatApp {
       return;
     }
 
-    // Case 3: Active fight camp! Render the 6 training activities
+    const isEn = this.lang === 'en';
     const energyColor = this.player.energy < 5 ? 'var(--accent-red)' : 'var(--accent-cyan)';
 
-    wrapper.innerHTML = `
+    let html = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
         <h2 style="font-size: 1rem;">🏋️ Kamp (${this.career.currentOpponent?.name || 'Rakip'})</h2>
         <div style="display: flex; gap: 0.4rem;">
@@ -792,168 +1027,106 @@ class MMAGoatApp {
         </div>
       </div>
 
-      <div class="tactics-grid">
+      <div class="tactics-grid" style="margin-bottom: 1rem;">
         <div class="tactic-btn" onclick="window.app.doCampActivity('sparring')">
           <h4>🥊 Ağır Sparring</h4>
-          <p>Punch & Kick (+) | -18 ⚡</p>
+          <p>Punch (+1) | +1 SP | -18 ⚡</p>
         </div>
         <div class="tactic-btn" onclick="window.app.doCampActivity('wrestling_drills')">
           <h4>🤼 Güreş & TDD</h4>
-          <p>Wrestling (+) | -20 ⚡</p>
+          <p>Wrestling (+1) | +1 SP | -20 ⚡</p>
         </div>
         <div class="tactic-btn" onclick="window.app.doCampActivity('bjj_rolling')">
           <h4>🥋 BJJ Rolling</h4>
-          <p>Submission (+) | -15 ⚡</p>
+          <p>Submission (+1) | +1 SP | -15 ⚡</p>
         </div>
         <div class="tactic-btn" onclick="window.app.doCampActivity('conditioning')">
           <h4>🏃 Kondisyon</h4>
-          <p>Cardio & Güç (+) | -22 ⚡</p>
+          <p>Cardio (+1) | +1 SP | -22 ⚡</p>
         </div>
         <div class="tactic-btn" onclick="window.app.doCampActivity('video_analysis')">
           <h4>📹 Rakip Analiz</h4>
-          <p>Fight IQ (+) | -5 ⚡</p>
+          <p>Fight IQ (+1) | +1 SP | -5 ⚡</p>
         </div>
         <div class="tactic-btn" onclick="window.app.doCampActivity('rest_sauna')">
           <h4>🧘 Sauna & Dinlen</h4>
           <p>+35 ⚡ | Stres (-)</p>
         </div>
+        <div class="tactic-btn" style="border: 1px solid var(--accent-cyan); background: rgba(0,243,255,0.08);" onclick="window.app.watchAdForEnergyBoost()">
+          <h4 style="color: var(--accent-cyan);">🎥 ${isEn ? 'Instant Recovery' : 'Hızlı Enerji'}</h4>
+          <p>${isEn ? 'Watch Ad (+50 Energy)' : 'Reklam İzle (+50 Enerji)'}</p>
+        </div>
       </div>
+
+      <!-- Feature 10: Nutrition Section in Training Camp -->
+      <div style="border-top: 1px dashed var(--bg-card-border); padding-top: 0.8rem; margin-top: 0.8rem;">
+        <h3 style="font-size: 0.95rem; color: var(--accent-gold); margin-bottom: 0.4rem;">🍎 Kamp Beslenme & Kütle Programı</h3>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+          Mevcut Kilo: <strong>${this.player.walkWeight} kg</strong> | Limit: <strong>${this.player.targetWeightKg} kg</strong>
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.5rem;">
     `;
-  }
 
-  showWeighInModal() {
-    const modal = document.getElementById('weighin-modal');
-    if (!modal) return;
-
-    const currentKg = this.player.currentWeight || (this.player.targetWeightKg + 3.8);
-    const targetKg = this.player.targetWeightKg;
-    const diffKg = Number((currentKg - targetKg).toFixed(1));
-
-    document.getElementById('weighin-current-kg').innerText = `${currentKg} kg`;
-    document.getElementById('weighin-target-kg').innerText = `${targetKg} kg`;
-    document.getElementById('weighin-diff-kg').innerText = diffKg > 0 ? `+${diffKg} kg` : `${diffKg} kg`;
-
-    document.getElementById('weighin-strategy-section').style.display = 'block';
-    document.getElementById('weighin-result-section').style.display = 'none';
-
-    const stratList = document.getElementById('weighin-strategies-list');
-    stratList.innerHTML = Object.keys(WEIGHT_CUT_STRATEGIES).map(key => {
-      const s = WEIGHT_CUT_STRATEGIES[key];
-      return `
-        <div class="glass-card" style="cursor: pointer; transition: transform 0.2s; border-color: var(--accent-gold); margin-bottom: 0.5rem;" onclick="window.app.handleWeighInChoice('${key}')">
-          <h4 style="color: var(--accent-gold); margin-bottom: 0.3rem;">${s.name}</h4>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem;">${s.desc}</p>
-          <div style="font-size: 0.75rem; color: var(--accent-cyan);">⚡ Enerji Düşüşü: -${s.energyPenalty} | Tahmini Kilo Kaybı: ~${s.weightCutKg} kg</div>
+    NUTRITION_ITEMS.forEach(item => {
+      const iName = isEn && item.nameEn ? item.nameEn : item.name;
+      const iDesc = isEn && item.descriptionEn ? item.descriptionEn : item.description;
+      html += `
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--bg-card-border); border-radius: 8px; padding: 0.5rem;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: #fff;">${iName}</div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin: 0.2rem 0;">${iDesc}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem;">
+            <strong style="color: var(--accent-gold); font-size: 0.85rem;">$${item.cost}</strong>
+            <button class="btn btn-gold btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="window.app.buyNutrition('${item.id}')">${isEn ? 'Eat' : 'Tüket'}</button>
+          </div>
         </div>
       `;
-    }).join('');
+    });
 
-    modal.classList.add('active');
-  }
+    html += `
+        </div>
+      </div>
+    `;
 
-  handleWeighInChoice(strategyKey) {
-    sfx.playClick();
-    if (!this.career) return;
-
-    const res = this.career.processWeighIn(strategyKey);
-    this.saveGame();
-
-    document.getElementById('weighin-strategy-section').style.display = 'none';
-    const resultSec = document.getElementById('weighin-result-section');
-    resultSec.style.display = 'block';
-
-    const badge = document.getElementById('weighin-status-badge');
-    if (res.passed) {
-      badge.style.background = 'rgba(34, 197, 94, 0.2)';
-      badge.style.border = '2px solid #22c55e';
-      badge.style.color = '#22c55e';
-      badge.innerText = '✅ TARTI PASSED (KİLO TUTTU)';
-    } else {
-      badge.style.background = 'rgba(239, 68, 68, 0.2)';
-      badge.style.border = '2px solid #ef4444';
-      badge.style.color = '#ef4444';
-      badge.innerText = '❌ TARTI KAÇIRILDI (MAÇTAN MEN)';
-    }
-
-    document.getElementById('weighin-result-text').innerText = res.message;
-
-    const confirmBtn = document.getElementById('btn-weighin-confirm');
-    confirmBtn.onclick = () => {
-      sfx.playClick();
-      document.getElementById('weighin-modal').classList.remove('active');
-      this.updateHeaderAndDashboard();
-      if (res.passed) {
-        this.prepareOctagonView();
-        this.switchScreen('screen-octagon');
-      } else {
-        this.switchScreen('screen-dashboard');
-      }
-    };
+    wrapper.innerHTML = html;
   }
 
   doCampActivity(activityId) {
     if (!this.career) return;
+
     sfx.playClick();
     const result = this.career.performCampActivity(activityId);
+
     if (result === 'no_energy') {
-      alert('⚡ Enerjin çok düşük! Antrenman yapabilmek için dinlenmen gerekiyor. Sauna & Dinlenme seçeneğini dene.');
+      const isEn = this.lang === 'en';
+      alert(isEn ? 'Too exhausted to train! Take sauna or rest.' : 'Çok yorgunsunuz! Antrenman yapmak için önce dinlenmeli veya saunaya girmelisiniz.');
       return;
     }
-    if (result) {
-      this.saveGame();
-      this.updateHeaderAndDashboard();
-      this.updateCampView();
 
-      // Check event
-      if (this.career.activeEvent) {
-        this.showEventModal(this.career.activeEvent);
-      }
-    }
-  }
-
-  showEventModal(evt) {
-    const modal = document.getElementById('event-modal');
-    document.getElementById('modal-title').innerText = evt.title;
-    document.getElementById('modal-desc').innerText = evt.description;
-
-    const optContainer = document.getElementById('modal-options');
-    optContainer.innerHTML = evt.options.map((opt, idx) => `
-      <button class="btn btn-secondary" onclick="window.app.resolveEventOption(${idx})">${opt.text}</button>
-    `).join('');
-
-    modal.classList.add('active');
-  }
-
-  resolveEventOption(index) {
-    if (this.career) {
-      sfx.playClick();
-
-      // Check WCF Contract Offer Event
-      if (this.career.activeEvent && this.career.activeEvent.id === 'wcf_contract_offer' && index === 0) {
-        this.player.organizationId = 'wcf';
-        this.player.rank = 15;
-        this.player.isChampion = false;
-        this.career.rankings = this.career.generateInitialRankings();
-        this.career.generateMatchOffers();
-        alert('🎉 TEBRİKLER! WCF (UFC) Organizasyonuna Transfer Oldun!\nDünyanın 1 numaralı liginde başarılar!');
-      }
-
-      this.career.resolveActiveEvent(index);
-      this.saveGame();
-      document.getElementById('event-modal').classList.remove('active');
-      this.updateHeaderAndDashboard();
-    }
+    this.saveGame();
+    this.updateCampView();
+    this.updateHeaderAndDashboard();
   }
 
   prepareOctagonView() {
     if (!this.career) return;
     const opponent = this.career.currentOpponent || this.career.findNextOpponent();
+    if (!opponent) return;
+
     this.fightEngine = new FightEngine(this.player, opponent, 3, this.player.rank === 0);
 
-    document.getElementById('fight-player-name').innerText = this.player.name;
-    document.getElementById('fight-player-style').innerText = FIGHT_STYLES[this.player.styleKey]?.name;
-    document.getElementById('fight-opp-name').innerText = opponent.name;
-    document.getElementById('fight-opp-style').innerText = FIGHT_STYLES[opponent.styleKey]?.name;
+    const isEn = this.lang === 'en';
+    const pStyle = isEn && FIGHT_STYLES[this.player.styleKey]?.nameEn ? FIGHT_STYLES[this.player.styleKey].nameEn : (FIGHT_STYLES[this.player.styleKey]?.name || 'MMA');
+    const oppStyle = isEn && FIGHT_STYLES[opponent.styleKey]?.nameEn ? FIGHT_STYLES[opponent.styleKey].nameEn : (FIGHT_STYLES[opponent.styleKey]?.name || 'MMA');
+
+    const pNameEl = document.getElementById('fight-player-name');
+    if (pNameEl) pNameEl.innerText = `${this.player.country?.flag || ''} ${this.player.name}`;
+    const pStyleEl = document.getElementById('fight-player-style');
+    if (pStyleEl) pStyleEl.innerText = pStyle;
+
+    const oppNameEl = document.getElementById('fight-opp-name');
+    if (oppNameEl) oppNameEl.innerText = `${opponent.country?.flag || ''} ${opponent.name}`;
+    const oppStyleEl = document.getElementById('fight-opp-style');
+    if (oppStyleEl) oppStyleEl.innerText = oppStyle;
 
     this.renderTacticsButtons();
     this.updateFightUI();
@@ -961,15 +1134,19 @@ class MMAGoatApp {
 
   renderTacticsButtons() {
     const container = document.getElementById('tactics-buttons-container');
-    if (!this.fightEngine) return;
+    if (!container || !this.fightEngine) return;
 
     const tactics = this.fightEngine.getAvailableTactics();
-    container.innerHTML = tactics.map(t => `
-      <div class="tactic-btn" onclick="window.app.playRoundChoice('${t.id}')">
-        <h4>${t.name}</h4>
-        <p>${t.desc}</p>
-      </div>
-    `).join('');
+    container.innerHTML = tactics.map(t => {
+      const tName = this.lang === 'en' && t.nameEn ? t.nameEn : t.name;
+      const tDesc = this.lang === 'en' && t.descEn ? t.descEn : t.desc;
+      return `
+        <div class="tactic-btn" onclick="window.app.playRoundChoice('${t.id}')">
+          <h4>${tName}</h4>
+          <p>${tDesc}</p>
+        </div>
+      `;
+    }).join('');
   }
 
   playRoundChoice(tacticId) {
@@ -984,125 +1161,385 @@ class MMAGoatApp {
       sfx.playBell();
       if (outcome.winner === 'player') sfx.playCrowdCheer();
 
-      this.career.handlePostFightResults(outcome, this.fightEngine.opponent);
+      const resultObj = this.career.handlePostFightResults(outcome, this.fightEngine.opponent);
       this.saveGame();
+
       setTimeout(() => {
-        alert(`Dövüş Sona Erdi!\nKazanan: ${outcome.winner === 'player' ? this.player.name : this.fightEngine.opponent.name}\nYöntem: ${outcome.method}`);
-        this.switchScreen('screen-dashboard');
-      }, 1500);
+        this.showFightResultModal(outcome, resultObj);
+      }, 700);
     }
+  }
+
+  showFightResultModal(outcome, resultObj) {
+    const modal = document.getElementById('fight-result-modal');
+    if (!modal) return;
+    const isEn = this.lang === 'en';
+
+    this.lastFightOutcome = outcome;
+    this.lastFightResultObj = resultObj;
+    this.doubleRewardClaimed = false;
+
+    const isPlayerWin = outcome.winner === 'player';
+    const winName = isPlayerWin ? this.player.name : this.fightEngine.opponent.name;
+    const winFlag = isPlayerWin ? (this.player.country?.flag || '🇹🇷') : (this.fightEngine.opponent.country?.flag || '🏳️');
+
+    const iconEl = document.getElementById('fight-result-icon');
+    if (iconEl) iconEl.innerText = isPlayerWin ? '🏆' : (outcome.winner === 'draw' ? '⚖️' : '💔');
+
+    const titleEl = document.getElementById('fight-result-title');
+    if (titleEl) titleEl.innerText = isEn ? '🥊 FIGHT FINISHED' : '🥊 DÖVÜŞ SONA ERDİ';
+    
+    const winnerBadge = document.getElementById('fight-result-winner-badge');
+    if (winnerBadge) {
+      if (outcome.winner === 'draw') {
+        winnerBadge.innerHTML = isEn ? '⚖️ MATCH DRAW' : '⚖️ BERABERE';
+        winnerBadge.style.borderColor = 'var(--text-muted)';
+        winnerBadge.style.color = '#fff';
+        winnerBadge.style.background = 'rgba(255,255,255,0.1)';
+      } else if (isPlayerWin) {
+        winnerBadge.innerHTML = `🏆 ${isEn ? 'Winner:' : 'Kazanan:'} ${winFlag} ${winName}`;
+        winnerBadge.style.borderColor = 'var(--accent-gold)';
+        winnerBadge.style.color = 'var(--accent-gold)';
+        winnerBadge.style.background = 'rgba(255,215,0,0.15)';
+      } else {
+        winnerBadge.innerHTML = `❌ ${isEn ? 'Winner:' : 'Kazanan:'} ${winFlag} ${winName}`;
+        winnerBadge.style.borderColor = 'var(--accent-red)';
+        winnerBadge.style.color = 'var(--accent-red)';
+        winnerBadge.style.background = 'rgba(255,42,95,0.15)';
+      }
+    }
+
+    const methodEl = document.getElementById('fight-result-method');
+    if (methodEl) {
+      methodEl.innerText = isEn 
+        ? `Method: ${outcome.method}`
+        : `Yöntem: ${outcome.method}`;
+    }
+
+    this.renderFightResultRewardsGrid();
+
+    const doubleBtn = document.getElementById('btn-fight-result-double-reward');
+    if (doubleBtn) {
+      doubleBtn.style.display = 'block';
+      doubleBtn.disabled = false;
+      doubleBtn.style.opacity = '1';
+      doubleBtn.innerText = isEn ? '🎥 CLAIM 2X FIGHT REWARD (WATCH AD)' : '🎥 2X MAÇ ÖDÜLÜ KAZAN (REKLAM İZLE)';
+    }
+
+    const closeBtn = document.getElementById('btn-fight-result-close');
+    if (closeBtn) {
+      closeBtn.innerText = isEn 
+        ? '🔥 RETURN TO DASHBOARD & CONTINUE CAREER' 
+        : '🔥 ANA SAYFAYA DÖN & KARİYERE DEVAM ET';
+    }
+
+    modal.classList.add('active');
+  }
+
+  renderFightResultRewardsGrid() {
+    const grid = document.getElementById('fight-result-rewards-grid');
+    if (!grid) return;
+    const isEn = this.lang === 'en';
+    const resultObj = this.lastFightResultObj || {};
+    const isPlayerWin = this.lastFightOutcome?.winner === 'player';
+
+    const multiplier = this.doubleRewardClaimed ? 2 : 1;
+    const spVal = (resultObj?.spGained || (isPlayerWin ? 3 : 1)) * multiplier;
+    const moneyVal = (resultObj?.totalEarned || 0) * multiplier;
+    const fameVal = (resultObj?.fameGained || 0) * multiplier;
+    const diaVal = (resultObj?.diamondReward || 0) * multiplier;
+
+    const claimedTag = this.doubleRewardClaimed ? ` <span style="font-size:0.72rem; color:#4caf50;">(2X AKTİF!)</span>` : '';
+
+    grid.innerHTML = `
+      <div style="background: rgba(255,215,0,0.1); border: 1px solid var(--accent-gold); border-radius: 8px; padding: 0.5rem; text-align: center;">
+        <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">${isEn ? 'Skill Points' : 'Yetenek Puanı'}</span>
+        <strong style="color: var(--accent-gold); font-size: 1.1rem;">+${spVal} SP${claimedTag}</strong>
+      </div>
+      <div style="background: rgba(76,175,80,0.1); border: 1px solid #4caf50; border-radius: 8px; padding: 0.5rem; text-align: center;">
+        <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">${isEn ? 'Purse Money' : 'Para Ödülü'}</span>
+        <strong style="color: #4caf50; font-size: 1.1rem;">+$${moneyVal.toLocaleString()}${claimedTag}</strong>
+      </div>
+      <div style="background: rgba(38,198,218,0.1); border: 1px solid var(--accent-cyan); border-radius: 8px; padding: 0.5rem; text-align: center;">
+        <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">${isEn ? 'Fame' : 'Şöhret'}</span>
+        <strong style="color: var(--accent-cyan); font-size: 1.1rem;">+${fameVal} ⭐${claimedTag}</strong>
+      </div>
+      <div style="background: rgba(171,71,188,0.1); border: 1px solid #ab47bc; border-radius: 8px; padding: 0.5rem; text-align: center;">
+        <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">${isEn ? 'Diamonds' : 'Elmas'}</span>
+        <strong style="color: #ab47bc; font-size: 1.1rem;">+${diaVal} 💎${claimedTag}</strong>
+      </div>
+    `;
+  }
+
+  // Rewarded Ad Action 1: 2x Fight Rewards
+  watchAdForDoubleReward() {
+    if (this.doubleRewardClaimed) return;
+    const isEn = this.lang === 'en';
+
+    sfx.playClick();
+    this.adManager.showRewardedAd(
+      () => {
+        // Reward Callback — Grant 2x rewards!
+        const resultObj = this.lastFightResultObj || {};
+        const bonusMoney = resultObj.totalEarned || 0;
+        const bonusSp = resultObj.spGained || 0;
+        const bonusFame = resultObj.fameGained || 0;
+        const bonusDia = resultObj.diamondReward || 0;
+
+        this.player.money += bonusMoney;
+        this.player.skillPoints = (this.player.skillPoints || 0) + bonusSp;
+        this.player.fame = Math.min(100, this.player.fame + bonusFame);
+        this.player.diamonds = (this.player.diamonds || 0) + bonusDia;
+
+        this.doubleRewardClaimed = true;
+        this.saveGame();
+        this.updateHeaderAndDashboard();
+        this.renderFightResultRewardsGrid();
+
+        const doubleBtn = document.getElementById('btn-fight-result-double-reward');
+        if (doubleBtn) {
+          doubleBtn.disabled = true;
+          doubleBtn.style.opacity = '0.5';
+          doubleBtn.innerText = isEn ? '✅ 2X REWARD CLAIMED!' : '✅ 2X ÖDÜL ALINDI!';
+        }
+
+        sfx.playCrowdCheer();
+        alert(isEn ? '🎉 2x Fight Reward Claimed Successfully!' : '🎉 Tebrikler! 2 Katı Maç Ödülü Hesabınıza Eklendi!');
+      },
+      (reason) => {
+        alert(isEn ? 'Ad was cancelled or not completed. No bonus granted.' : 'Reklam tamamlanmadı veya kapatıldı. Ekstra 2x ödül verilmedi.');
+      }
+    );
+  }
+
+  // Rewarded Ad Action 2: Camp Instant +50 Energy
+  watchAdForEnergyBoost() {
+    if (!this.player) return;
+    const isEn = this.lang === 'en';
+
+    sfx.playClick();
+    this.adManager.showRewardedAd(
+      () => {
+        this.player.energy = Math.min(100, this.player.energy + 50);
+        this.saveGame();
+        this.updateHeaderAndDashboard();
+        this.updateCampView();
+        sfx.playClick();
+        alert(isEn ? '⚡ +50 Energy Boost Claimed!' : '⚡ Tebrikler! Reklam izleyerek +50 Enerji Kazandınız!');
+      },
+      () => {
+        alert(isEn ? 'Ad was cancelled or not completed.' : 'Reklam tamamlanmadı veya kapatıldı. Enerji ödülü verilmedi.');
+      }
+    );
+  }
+
+  closeFightResultModal() {
+    sfx.playClick();
+    const modal = document.getElementById('fight-result-modal');
+    if (modal) modal.classList.remove('active');
+    this.switchScreen('screen-dashboard');
   }
 
   updateFightUI() {
     if (!this.fightEngine) return;
 
     const st = this.fightEngine.state;
-    document.getElementById('fight-p-head').style.width = `${Math.max(0, st.player.headHp)}%`;
-    document.getElementById('fight-p-stam').style.width = `${Math.max(0, st.player.stamina)}%`;
-    document.getElementById('fight-opp-head').style.width = `${Math.max(0, st.opponent.headHp)}%`;
-    document.getElementById('fight-opp-stam').style.width = `${Math.max(0, st.opponent.stamina)}%`;
+    const pHead = document.getElementById('fight-p-head');
+    if (pHead) pHead.style.width = `${Math.max(0, st.player.headHp)}%`;
+    const pStam = document.getElementById('fight-p-stam');
+    if (pStam) pStam.style.width = `${Math.max(0, st.player.stamina)}%`;
 
-    // Commentary feed
+    const oppHead = document.getElementById('fight-opp-head');
+    if (oppHead) oppHead.style.width = `${Math.max(0, st.opponent.headHp)}%`;
+    const oppStam = document.getElementById('fight-opp-stam');
+    if (oppStam) oppStam.style.width = `${Math.max(0, st.opponent.stamina)}%`;
+
+    // Commentary feed — keep scroll position steady without page jump
     const box = document.getElementById('fight-commentary-box');
-    box.innerHTML = this.fightEngine.commentary.map(c => `
-      <div class="commentary-line ${c.type}">${c.text}</div>
-    `).join('');
+    if (box) {
+      box.innerHTML = this.fightEngine.commentary.map(c => `
+        <div class="commentary-line ${c.type}">${c.text}</div>
+      `).join('');
+      box.scrollTop = 0;
+    }
+  }
+
+  showEventModal(evt) {
+    const modal = document.getElementById('event-modal');
+    if (!modal) return;
+    document.getElementById('modal-title').innerText = evt.title;
+    document.getElementById('modal-desc').innerText = evt.description;
+
+    const optContainer = document.getElementById('modal-options');
+    if (optContainer) {
+      optContainer.innerHTML = evt.options.map((opt, idx) => `
+        <button class="btn btn-secondary" onclick="window.app.resolveEventOption(${idx})">${opt.text}</button>
+      `).join('');
+    }
+
+    modal.classList.add('active');
+  }
+
+  resolveEventOption(index) {
+    if (this.career) {
+      sfx.playClick();
+      if (this.career.activeEvent && this.career.activeEvent.id === 'wcf_contract_offer' && index === 0) {
+        this.player.organizationId = 'wcf';
+        this.player.rank = 15;
+        this.player.isChampion = false;
+        this.career.rankings = this.career.generateInitialRankings();
+        this.career.generateMatchOffers();
+        alert('🎉 TEBRİKLER! WCF (UFC) Organizasyonuna Transfer Oldun!\nDünyanın 1 numaralı liginde başarılar!');
+      }
+
+      this.career.resolveActiveEvent(index);
+      this.saveGame();
+      const modal = document.getElementById('event-modal');
+      if (modal) modal.classList.remove('active');
+      this.updateHeaderAndDashboard();
+    }
+  }
+
+  // Feature 5: Rankings Tab Switch (Pro vs Amateur)
+  switchRankingsTab(tab) {
+    this.currentRankingsTab = tab;
+    sfx.playClick();
+    this.renderRankingsView();
   }
 
   renderRankingsView() {
     if (!this.career) return;
-    const tbody = document.getElementById('rankings-tbody');
     const isEn = this.lang === 'en';
 
-    // Ensure rankings has all 31 slots (rank 0 = champion, rank 1-30 = ranked)
-    // Filter out any unranked/amateur fighters (rank >= 99) that may have leaked in
-    const cleanedRankings = this.career.rankings.filter(f => f && f.rank !== undefined && f.rank < 99);
+    const proBtn = document.getElementById('btn-rankings-pro');
+    const amBtn = document.getElementById('btn-rankings-amateur');
 
-    // Build a rank -> fighter lookup map
-    const byRank = {};
-    cleanedRankings.forEach(f => {
-      if (f.id === this.player.id) return; // Skip player — we'll insert them separately
-      const r = f.rank;
-      // If multiple fighters share a rank (shouldn't happen but just in case), keep highest OVR
-      if (!byRank[r] || (f.getOverallRating ? f.getOverallRating() : 0) > (byRank[r].getOverallRating ? byRank[r].getOverallRating() : 0)) {
-        byRank[r] = f;
-      }
-    });
+    const showAmateur = this.currentRankingsTab === 'amateur';
 
-    // Fill any completely missing rank slots with new AI fighters (lazy-fill)
-    for (let r = 0; r <= 30; r++) {
-      if (r === this.player.rank) continue; // Player occupies this slot
-      if (!byRank[r]) {
-        const filler = generateAIOpponent ? generateAIOpponent(this.player.weightClass, this.career.getOrgTier(), r, r === 0) : null;
-        if (filler) {
-          byRank[r] = filler;
-          this.career.rankings.push(filler); // Add to persistent rankings
-        }
-      }
-    }
+    if (proBtn) proBtn.className = `btn btn-sm ${!showAmateur ? 'btn-gold' : 'btn-secondary'}`;
+    if (amBtn) amBtn.className = `btn btn-sm ${showAmateur ? 'btn-gold' : 'btn-secondary'}`;
 
-    const champTitle = isEn ? '👑 CHAMPION' : '👑 ŞAMPİYON';
-    const youTag = isEn ? '(YOU)' : '(SEN)';
-    const isAmateur = this.player.rank >= 99;
-    const pStyle = isEn && FIGHT_STYLES[this.player.styleKey]?.nameEn ? FIGHT_STYLES[this.player.styleKey].nameEn : (FIGHT_STYLES[this.player.styleKey]?.name || 'MMA');
+    const tbody = document.getElementById('rankings-tbody');
+    if (!tbody) return;
 
     let html = '';
+    const youTag = isEn ? '(YOU)' : '(SEN)';
+    const champTitle = isEn ? '👑 CHAMPION' : '👑 ŞAMPİYON';
 
-    // Show professional rankings (rank 0 to 30)
-    for (let r = 0; r <= 30; r++) {
-      const rankDisplay = r === 0 ? champTitle : `#${r}`;
+    if (showAmateur) {
+      // Amateur Rankings — Sort by Wins desc, Losses asc, OVR desc
+      const amRanks = [...(this.career.amateurRankings || [])];
+      
+      amRanks.sort((a, b) => {
+        const aRec = a.id === this.player.id ? (this.player.amateurRecord || { wins: 0, losses: 0 }) : (a.record || { wins: 0, losses: 0 });
+        const bRec = b.id === this.player.id ? (this.player.amateurRecord || { wins: 0, losses: 0 }) : (b.record || { wins: 0, losses: 0 });
 
-      if (r === this.player.rank && !isAmateur) {
-        // Insert player row
-        html += `
-          <tr class="highlight">
-            <td>${rankDisplay}</td>
-            <td>⭐ ${this.player.country?.flag || '🇹🇷'} ${this.player.name} ${youTag}</td>
-            <td>${pStyle}</td>
-            <td>${this.player.record.wins}-${this.player.record.losses}</td>
-            <td><strong style="color:var(--accent-cyan);">${this.player.getOverallRating()}</strong></td>
-          </tr>
-        `;
-      } else if (byRank[r]) {
-        const f = byRank[r];
-        const ovr = f.getOverallRating ? f.getOverallRating() : (f.stats ? Math.round(Object.values(f.stats).reduce((a, b) => a + b, 0) / 11) : 60);
+        const aWins = aRec.wins || 0;
+        const bWins = bRec.wins || 0;
+        if (bWins !== aWins) return bWins - aWins;
+
+        const aLosses = aRec.losses || 0;
+        const bLosses = bRec.losses || 0;
+        if (aLosses !== bLosses) return aLosses - bLosses;
+
+        const aOvr = a.getOverallRating ? a.getOverallRating() : 30;
+        const bOvr = b.getOverallRating ? b.getOverallRating() : 30;
+        return bOvr - aOvr;
+      });
+
+      amRanks.forEach((f, idx) => {
+        const isPlayer = this.player.isAmateur && f.id === this.player.id;
+        const rankDisplay = idx === 0 ? champTitle : `#${idx}`;
+        const fName = `${f.country?.flag || '🇹🇷'} ${f.name}`;
         const fStyle = isEn && FIGHT_STYLES[f.styleKey]?.nameEn ? FIGHT_STYLES[f.styleKey].nameEn : (FIGHT_STYLES[f.styleKey]?.name || 'MMA');
+        const ovr = f.getOverallRating ? f.getOverallRating() : 35;
+        const rec = f.id === this.player.id 
+          ? `${this.player.amateurRecord?.wins || 0}-${this.player.amateurRecord?.losses || 0}`
+          : `${f.record?.wins || 0}-${f.record?.losses || 0}`;
+
         html += `
-          <tr>
+          <tr class="${isPlayer ? 'highlight' : ''}">
             <td>${rankDisplay}</td>
-            <td>${f.country?.flag || '🏳️'} ${f.name}</td>
+            <td>${fName} ${isPlayer ? youTag : ''}</td>
             <td>${fStyle}</td>
-            <td>${f.record ? f.record.wins + '-' + f.record.losses : '0-0'}</td>
+            <td>${rec}</td>
             <td><strong style="color:var(--accent-cyan);">${ovr}</strong></td>
           </tr>
         `;
-      } else {
-        // Empty slot fallback (shouldn't happen after fill)
-        html += `<tr><td>${rankDisplay}</td><td colspan="4" style="color:var(--text-muted)">—</td></tr>`;
-      }
-    }
+      });
 
-    // Show amateur player below the pro rankings (if still unranked)
-    if (isAmateur) {
-      html += `
-        <tr class="highlight" style="border-top: 2px dashed var(--accent-gold);">
-          <td><span style="color: var(--accent-gold); font-weight: 700;">${isEn ? 'Amateur (NR)' : 'Amatör (NR)'}</span></td>
-          <td>⭐ ${this.player.country?.flag || '🇹🇷'} ${this.player.name} ${youTag}</td>
-          <td>${pStyle}</td>
-          <td>${this.player.record.wins}-${this.player.record.losses}</td>
-          <td><strong style="color:var(--accent-cyan);">${this.player.getOverallRating()}</strong></td>
-        </tr>
-        <tr>
-          <td colspan="5" style="text-align:center; font-size:0.75rem; color:var(--text-muted); padding:0.4rem;">
-            ${isEn ? '💡 To enter the pro rankings (#30), win 7 amateur fights in the regional promotion.' : '💡 Profesyonel lig sıralamasına (#30) girmek için bölgesel ligde 7 amatör galibiyet almanız gerekir.'}
-          </td>
-        </tr>
-      `;
+      if (this.player.isAmateur && !amRanks.some(f => f.id === this.player.id)) {
+        const pStyle = isEn && FIGHT_STYLES[this.player.styleKey]?.nameEn ? FIGHT_STYLES[this.player.styleKey].nameEn : (FIGHT_STYLES[this.player.styleKey]?.name || 'MMA');
+        const amRec = this.player.amateurRecord || { wins: 0, losses: 0 };
+        html += `
+          <tr class="highlight" style="border-top: 2px dashed var(--accent-gold);">
+            <td><span style="color: var(--accent-gold); font-weight: 700;">${isEn ? 'Amateur (NR)' : 'Amatör (NR)'}</span></td>
+            <td>⭐ ${this.player.country?.flag || '🇹🇷'} ${this.player.name} ${youTag}</td>
+            <td>${pStyle}</td>
+            <td>${amRec.wins}-${amRec.losses}</td>
+            <td><strong style="color:var(--accent-cyan);">${this.player.getOverallRating()}</strong></td>
+          </tr>
+        `;
+      }
+    } else {
+      // Pro Rankings
+      const proRanks = this.career.rankings || [];
+      const byRank = {};
+      proRanks.forEach(f => { if (f && f.rank !== undefined) byRank[f.rank] = f; });
+
+      for (let r = 0; r <= 30; r++) {
+        const rankDisplay = r === 0 ? champTitle : `#${r}`;
+
+        if (!this.player.isAmateur && r === this.player.rank) {
+          const pStyle = isEn && FIGHT_STYLES[this.player.styleKey]?.nameEn ? FIGHT_STYLES[this.player.styleKey].nameEn : (FIGHT_STYLES[this.player.styleKey]?.name || 'MMA');
+          html += `
+            <tr class="highlight">
+              <td>${rankDisplay}</td>
+              <td>⭐ ${this.player.country?.flag || '🇹🇷'} ${this.player.name} ${youTag}</td>
+              <td>${pStyle}</td>
+              <td>${this.player.record.wins}-${this.player.record.losses}</td>
+              <td><strong style="color:var(--accent-cyan);">${this.player.getOverallRating()}</strong></td>
+            </tr>
+          `;
+        } else if (byRank[r]) {
+          const f = byRank[r];
+          const ovr = f.getOverallRating ? f.getOverallRating() : 60;
+          const fStyle = isEn && FIGHT_STYLES[f.styleKey]?.nameEn ? FIGHT_STYLES[f.styleKey].nameEn : (FIGHT_STYLES[f.styleKey]?.name || 'MMA');
+          html += `
+            <tr>
+              <td>${rankDisplay}</td>
+              <td>${f.country?.flag || '🏳️'} ${f.name}</td>
+              <td>${fStyle}</td>
+              <td>${f.record ? f.record.wins + '-' + f.record.losses : '0-0'}</td>
+              <td><strong style="color:var(--accent-cyan);">${ovr}</strong></td>
+            </tr>
+          `;
+        }
+      }
     }
 
     tbody.innerHTML = html;
   }
 
+  // Feature 8 & 2: Manual Stat Point Allocation in Stats View
+  allocateStatPoint(statKey, points = 1) {
+    if (!this.player) return;
+    const isEn = this.lang === 'en';
+    const allocated = this.player.allocateSkillPoint(statKey, points);
+    if (allocated > 0) {
+      sfx.playClick();
+      this.saveGame();
+      this.renderStatsView();
+      this.updateHeaderAndDashboard();
+    } else {
+      const cost = this.player.getStatUpgradeCost(statKey);
+      if (cost === Infinity) {
+        alert(isEn ? 'Stat is at maximum (99)!' : 'Bu stat maksimum seviyeye (99) ulaştı!');
+      } else {
+        alert(isEn ? `Requires at least ${cost} Skill Points!` : `Bu statı geliştirmek için en az ${cost} Yetenek Puanı (SP) gerekiyor!`);
+      }
+    }
+  }
 
   renderStatsView() {
     if (!this.player) return;
@@ -1138,7 +1575,6 @@ class MMAGoatApp {
 
     const statLabels = isEn ? statLabelsEN : statLabelsTR;
 
-    // Fighter header
     document.getElementById('stats-fighter-name').innerText = `${this.player.country?.flag || ''} ${this.player.name}`;
     document.getElementById('stats-ovr').innerText = this.player.getOverallRating();
     const ageStrStats = isEn 
@@ -1148,17 +1584,37 @@ class MMAGoatApp {
     const styleObj = FIGHT_STYLES[this.player.styleKey];
     document.getElementById('stats-style').innerText = (isEn && styleObj?.nameEn) ? styleObj.nameEn : (styleObj?.name || 'MMA');
 
-    // Stat bars
+    // Render Skill Points counter
+    const spEl = document.getElementById('stats-sp-count');
+    if (spEl) spEl.innerText = this.player.skillPoints || 0;
+
+    // Render Stat bars with [+1] and [+5] buttons
     const container = document.getElementById('stats-bars-container');
+    const spAvailable = (this.player.skillPoints || 0);
+
     container.innerHTML = Object.keys(this.player.stats).map(key => {
       const val = this.player.stats[key];
       const info = statLabels[key] || { name: key, icon: '📊', color: '#90caf9' };
       const pct = Math.min(100, val);
+      const cost = this.player.getStatUpgradeCost(key);
+
+      const canUpgrade1 = spAvailable >= cost && val < 99;
+      const canUpgrade5 = spAvailable >= cost && val < 99;
+      const costTag = cost === Infinity ? 'MAX' : `${cost} SP`;
+
       return `
-        <div style="margin-bottom: 0.7rem;">
+        <div style="margin-bottom: 0.7rem; background: rgba(0,0,0,0.2); padding: 0.4rem; border-radius: 8px; border: 1px solid var(--bg-card-border);">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
             <span style="font-size: 0.85rem; color: var(--text-main);">${info.icon} ${info.name}</span>
-            <strong style="font-family: var(--font-heading); font-size: 1.05rem; color: ${info.color};">${val}</strong>
+            <div style="display: flex; align-items: center; gap: 0.3rem;">
+              <strong style="font-family: var(--font-heading); font-size: 1.05rem; color: ${info.color}; margin-right: 0.2rem;">${val}</strong>
+              <button class="btn btn-gold btn-sm" style="padding: 0.15rem 0.45rem; font-size: 0.75rem;" onclick="window.app.allocateStatPoint('${key}', 1)" ${!canUpgrade1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>
+                +1 (${costTag})
+              </button>
+              <button class="btn btn-cyan btn-sm" style="padding: 0.15rem 0.45rem; font-size: 0.75rem;" onclick="window.app.allocateStatPoint('${key}', 5)" ${!canUpgrade5 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>
+                +5 SP
+              </button>
+            </div>
           </div>
           <div class="bar-container" style="height: 10px;">
             <div class="bar-fill" style="width: ${pct}%; background: ${info.color}; transition: width 0.4s ease;"></div>
@@ -1169,11 +1625,13 @@ class MMAGoatApp {
 
     // Career summary
     const summaryDiv = document.getElementById('stats-career-summary');
-    const rankText = this.player.rank >= 99 ? (isEn ? 'Unranked' : 'Sıralama Dışı') : (this.player.rank === 0 ? (isEn ? '👑 CHAMPION' : '👑 ŞAMPİYON') : `#${this.player.rank}`);
+    const rankText = this.player.isAmateur ? (isEn ? 'Amateur' : 'Amatör (NR)') : (this.player.rank === 0 ? (isEn ? '👑 CHAMPION' : '👑 ŞAMPİYON') : `#${this.player.rank}`);
+    const rec = this.player.isAmateur ? (this.player.amateurRecord || { wins: 0, losses: 0, draws: 0 }) : this.player.record;
+
     summaryDiv.innerHTML = `
       <div style="background:rgba(0,0,0,0.3); padding:0.5rem; border-radius:8px; text-align:center;">
         <div style="font-size:0.75rem; color:var(--text-muted);">${isEn ? 'Record' : 'Rekor'}</div>
-        <strong style="color:var(--accent-cyan);">${this.player.record.wins}W - ${this.player.record.losses}L - ${this.player.record.draws}D</strong>
+        <strong style="color:var(--accent-cyan);">${rec.wins}W - ${rec.losses}L - ${rec.draws || 0}D</strong>
       </div>
       <div style="background:rgba(0,0,0,0.3); padding:0.5rem; border-radius:8px; text-align:center;">
         <div style="font-size:0.75rem; color:var(--text-muted);">${isEn ? 'Ranking' : 'Sıralama'}</div>
@@ -1181,11 +1639,11 @@ class MMAGoatApp {
       </div>
       <div style="background:rgba(0,0,0,0.3); padding:0.5rem; border-radius:8px; text-align:center;">
         <div style="font-size:0.75rem; color:var(--text-muted);">${isEn ? 'KO Wins' : 'KO Galibiyeti'}</div>
-        <strong style="color:var(--accent-red);">${this.player.record.koWins}</strong>
+        <strong style="color:var(--accent-red);">${rec.koWins || 0}</strong>
       </div>
       <div style="background:rgba(0,0,0,0.3); padding:0.5rem; border-radius:8px; text-align:center;">
         <div style="font-size:0.75rem; color:var(--text-muted);">${isEn ? 'Sub Wins' : 'Sub Galibiyeti'}</div>
-        <strong style="color:#ab47bc;">${this.player.record.subWins}</strong>
+        <strong style="color:#ab47bc;">${rec.subWins || 0}</strong>
       </div>
       <div style="background:rgba(0,0,0,0.3); padding:0.5rem; border-radius:8px; text-align:center;">
         <div style="font-size:0.75rem; color:var(--text-muted);">${isEn ? 'Money' : 'Bakiye'}</div>
@@ -1195,29 +1653,119 @@ class MMAGoatApp {
         <div style="font-size:0.75rem; color:var(--text-muted);">${isEn ? 'Fame' : 'Şöhret'}</div>
         <strong style="color:var(--accent-cyan);">${this.player.fame}</strong>
       </div>
-      <div style="background:rgba(0,0,0,0.3); padding:0.5rem; border-radius:8px; text-align:center;">
-        <div style="font-size:0.75rem; color:var(--text-muted);">${isEn ? 'Win Streak' : 'Galibiyet Serisi'}</div>
-        <strong style="color:var(--accent-gold);">${this.player.winStreak}🔥</strong>
-      </div>
     `;
+  }
+
+  // Feature 6: Render Sponsors View in Social Screen
+  renderSponsorsView() {
+    const container = document.getElementById('sponsors-section-container');
+    if (!container || !this.career) return;
+    const isEn = this.lang === 'en';
+
+    const activeList = this.career.activeSponsorships || [];
+    let html = `
+      <h3 style="font-size: 1rem; color: var(--accent-gold); margin-bottom: 0.6rem;">💼 ${isEn ? 'Sponsorship Contracts' : 'Sponsorluk Sözleşmeleri & Kontratlar'}</h3>
+    `;
+
+    if (activeList.length > 0) {
+      html += `
+        <h4 style="font-size: 0.85rem; color: var(--accent-cyan); margin-bottom: 0.4rem;">${isEn ? 'Active Contracts' : 'Aktif İmzalı Sözleşmeler'}</h4>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+      `;
+
+      activeList.forEach(s => {
+        const brandName = isEn && s.brandEn ? s.brandEn : s.brand;
+        html += `
+          <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--accent-gold); border-radius: 8px; padding: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+              <span style="font-weight: 700; font-size: 0.9rem; color: #fff;">${s.icon || '💼'} ${brandName}</span>
+              <span style="font-size: 0.78rem; color: var(--accent-cyan); font-weight: 700;">Kalan: ${s.fightsRemaining} Maç</span>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.3rem;">${s.objectiveDesc || ''}</p>
+            <div style="font-size: 0.75rem; color: var(--accent-gold);">
+              Maç Başı Ödeme: <strong>$${s.payPerFight.toLocaleString()}</strong> | Galibiyet Bonusu: <strong>+$${s.winBonus.toLocaleString()}</strong>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    html += `
+      <h4 style="font-size: 0.85rem; color: var(--accent-gold); margin-bottom: 0.4rem;">${isEn ? 'Available Sponsor Offers' : 'Mevcut Sponsor Teklifleri'}</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem;">
+    `;
+
+    SPONSORS_CATALOG.forEach(s => {
+      const isSigned = activeList.some(act => act.sponsorId === s.id);
+      const bName = isEn ? s.brandEn : s.brand;
+      const bDesc = isEn ? s.descEn : s.desc;
+      const bObj = isEn ? s.objectiveDescEn : s.objectiveDesc;
+
+      const totalWins = (this.player.record?.wins || 0) + (this.player.amateurRecord?.wins || 0);
+      const meetsFame = this.player.fame >= s.reqFame;
+      const meetsWins = totalWins >= s.reqWins;
+      const meetsRank = s.minRank === 99 || (s.minRank === 0 ? this.player.isChampion : (!this.player.isAmateur && this.player.rank <= s.minRank));
+
+      const canSign = !isSigned && meetsFame && meetsWins && meetsRank;
+
+      let btnHtml = '';
+      if (isSigned) {
+        btnHtml = `<button class="btn btn-sm" disabled style="width: 100%; opacity: 0.6; background: rgba(0,243,255,0.2); border: 1px solid var(--accent-cyan); color: var(--accent-cyan);">✅ İMZALANDI</button>`;
+      } else if (canSign) {
+        btnHtml = `<button class="btn btn-gold btn-sm" style="width: 100%;" onclick="window.app.signSponsor('${s.id}')">✍️ Sözleşmeyi İmzala</button>`;
+      } else {
+        btnHtml = `<button class="btn btn-secondary btn-sm" disabled style="width: 100%; opacity: 0.5;">🔒 Kilitli</button>`;
+      }
+
+      html += `
+        <div class="glass-card" style="padding: 0.6rem; border-color: var(--bg-card-border);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.3rem;">
+            <span style="font-size: 1.4rem;">${s.icon}</span>
+            <span class="rarity-badge rarity-common">${s.tier}</span>
+          </div>
+          <h4 style="font-size: 0.88rem; color: #fff; margin-bottom: 0.2rem;">${bName}</h4>
+          <p style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.4rem;">${bDesc}</p>
+          <div style="font-size: 0.72rem; color: var(--accent-cyan); margin-bottom: 0.4rem;">
+            🎯 ${bObj}<br>
+            💰 $${s.payPerFight.toLocaleString()} / maç (+$${s.winBonus.toLocaleString()} bonus)
+          </div>
+          <div style="font-size: 0.68rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+            Gereksinim: ${s.reqFame} Şöhret | ${s.reqWins} Galibiyet ${s.minRank === 0 ? '| Şampiyonluk' : (s.minRank < 99 ? `| Top #${s.minRank}` : '')}
+          </div>
+          ${btnHtml}
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+  }
+
+  signSponsor(sponsorId) {
+    if (!this.career) return;
+    sfx.playClick();
+    const res = this.career.signSponsorContract(sponsorId);
+    alert(res.message);
+    if (res.success) {
+      this.saveGame();
+      this.renderSocialFeedView();
+    }
   }
 
   renderSocialFeedView() {
     if (!this.career) return;
 
-    // Display player's social handle
     const handleEl = document.getElementById('social-player-handle');
     if (handleEl && this.player) {
       handleEl.innerText = this.player.socialHandle;
     }
 
-    // Update weekly post counter
     const limitText = document.getElementById('social-post-limit-text');
     if (limitText) {
       limitText.innerText = `${this.career.weeklySocialPostsLeft} / 3`;
     }
 
-    // Toggle post buttons based on limit
     const isDisabled = this.career.weeklySocialPostsLeft <= 0;
     ['btn-post-trash', 'btn-post-respect', 'btn-post-flex'].forEach(id => {
       const btn = document.getElementById(id);
@@ -1229,16 +1777,20 @@ class MMAGoatApp {
     });
 
     const container = document.getElementById('social-feed-container');
-    container.innerHTML = this.career.socialFeed.map(item => `
-      <div class="social-item">
-        <div class="social-header">
-          <strong>${item.author} ${item.handle ? item.handle : ''}</strong>
-          <span>${item.time}</span>
+    if (container) {
+      container.innerHTML = this.career.socialFeed.map(item => `
+        <div class="social-item">
+          <div class="social-header">
+            <strong>${item.author} ${item.handle ? item.handle : ''}</strong>
+            <span>${item.time}</span>
+          </div>
+          <p style="font-size:0.9rem; line-height:1.4;">${item.text}</p>
+          <span style="font-size:0.8rem; color:var(--accent-gold); margin-top:0.4rem; display:inline-block;">❤️ ${item.likes.toLocaleString()} ${this.lang === 'en' ? 'Likes' : 'Beğeni'}</span>
         </div>
-        <p style="font-size:0.9rem; line-height:1.4;">${item.text}</p>
-        <span style="font-size:0.8rem; color:var(--accent-gold); margin-top:0.4rem; display:inline-block;">❤️ ${item.likes.toLocaleString()} ${this.lang === 'en' ? 'Likes' : 'Beğeni'}</span>
-      </div>
-    `).join('');
+      `).join('');
+    }
+
+    this.renderSponsorsView();
   }
 
   postSocial(type) {
@@ -1575,10 +2127,9 @@ class MMAGoatApp {
     sfx.playClick();
     this.career.buyNutrition(item);
     this.saveGame();
-    this.renderShopView();
+    this.updateCampView();
     this.updateHeaderAndDashboard();
-    const itemName = isEn && item.nameEn ? item.nameEn : item.name;
-    alert(isEn ? `😋 Consumed ${itemName}.\nCurrent Weight: ${this.player.walkWeight} kg` : `😋 Afiyet olsun! ${item.name} tüketildi.\nMevcut Kilonuz: ${this.player.walkWeight} kg`);
+    this.renderShopView();
   }
 
   changeWeightClassFromShop() {

@@ -11,6 +11,7 @@ const files = [
   'fighter.js',
   'career.js',
   'fightEngine.js',
+  'adManager.js',
   'app.js'
 ];
 

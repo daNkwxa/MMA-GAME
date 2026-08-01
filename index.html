@@ -13,7 +13,7 @@
   <meta name="format-detection" content="telephone=no">
   <meta name="msapplication-tap-highlight" content="no">
   <title>MMA GOAT - Career RPG & Management Game</title>
-  <link rel="stylesheet" href="styles.css?v=14.0">
+  <link rel="stylesheet" href="styles.css?v=15.0">
   <style>
     /* iOS Capacitor App Specific Overrides */
     body.capacitor-ios {
@@ -56,10 +56,10 @@
         💰 <strong id="hdr-money">$1,500</strong>
       </div>
       <div class="stat-pill stat-pill-diamond" title="Elmas (Mağaza & Bağış Parası)" style="border-color: rgba(0, 243, 255, 0.4); background: rgba(0, 243, 255, 0.1);">
-        💎 <strong id="hdr-diamonds" style="color: var(--accent-cyan);">50</strong>
+        💎 <strong id="hdr-diamonds" style="color: var(--accent-cyan);">5</strong>
       </div>
       <div class="stat-pill" title="Şöhret">
-        ⭐ <span id="hdr-fame">Fame: 0</span>
+        ⭐ <span id="hdr-fame">0</span>
       </div>
       <div class="stat-pill" title="Enerji">
         ⚡ <span id="hdr-energy">100%</span>
@@ -192,7 +192,12 @@
         <div>
           <!-- Next Fight / Match Offers Card Container -->
           <div id="dash-fight-container" class="glass-card" style="border-color: var(--accent-gold); margin-bottom: 0.6rem;">
-            <!-- Rendered dynamically by JS: either current fight status OR 3 Match Offers -->
+            <!-- Rendered dynamically by JS -->
+          </div>
+
+          <!-- Feature 11: Weight Class Management Card on Dashboard -->
+          <div id="dash-weight-card" class="glass-card" style="border-color: var(--accent-cyan); margin-bottom: 0.6rem;">
+            <!-- Rendered dynamically by JS -->
           </div>
 
           <!-- Fighter Stats Grid -->
@@ -210,10 +215,10 @@
     <!-- SCREEN: STATS & ATTRIBUTES -->
     <section id="screen-stats" class="screen">
       <div class="glass-card">
-        <h2 style="margin-bottom: 1rem; font-size: 1.4rem; text-align: center;">📊 Dövüşçü Statları & Nitelikleri</h2>
+        <h2 style="margin-bottom: 0.8rem; font-size: 1.4rem; text-align: center;" data-i18n="statsTitle">📊 Dövüşçü Statları & Nitelikleri</h2>
 
-        <div class="glass-card" style="text-align: center; margin-bottom: 1rem; border-color: var(--accent-cyan);">
-          <div style="font-size: 0.85rem; color: var(--text-muted);">Dövüşçü</div>
+        <div class="glass-card" style="text-align: center; margin-bottom: 0.8rem; border-color: var(--accent-cyan);">
+          <div style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="statsFighterLabel">Dövüşçü</div>
           <h3 id="stats-fighter-name" style="font-size: 1.2rem; margin: 0.2rem 0;">Fighter</h3>
           <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 0.5rem;">
             <div class="stat-pill">OVR: <strong id="stats-ovr" style="color: var(--accent-cyan);">0</strong></div>
@@ -222,12 +227,22 @@
           </div>
         </div>
 
+        <!-- Feature 8 & 2: Skill Points Banner -->
+        <div id="stats-sp-banner" class="glass-card" style="text-align: center; margin-bottom: 0.8rem; border-color: var(--accent-gold); background: rgba(234, 179, 8, 0.1);">
+          <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent-gold);">
+            <span data-i18n="spBannerText">✨ Kullanılabilir Yetenek Puanı (Skill Points):</span> <span id="stats-sp-count" style="font-size: 1.3rem;">0</span>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;" data-i18n="spBannerDesc">
+            Puanlar kampa katılarak kazanılır. Yüksek statlar daha fazla SP gerektirir (Soft Cap: 75).
+          </p>
+        </div>
+
         <div id="stats-bars-container">
           <!-- Populated dynamically -->
         </div>
 
         <div class="glass-card" style="margin-top: 1rem; border-color: var(--accent-gold);">
-          <h3 style="font-size: 1rem; margin-bottom: 0.6rem;">🏆 Kariyer Özeti</h3>
+          <h3 style="font-size: 1rem; margin-bottom: 0.6rem;" data-i18n="careerSummaryTitle">🏆 Kariyer Özeti</h3>
           <div id="stats-career-summary" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.9rem;">
             <!-- Populated dynamically -->
           </div>
@@ -266,7 +281,7 @@
             <p id="fight-opp-style" style="color: var(--accent-red); font-size: 0.8rem;">Kickboxer</p>
             <div style="margin-top: 0.4rem; text-align: left;">
               <span style="font-size: 0.75rem; color: var(--text-muted);">Head HP:</span>
-              <div class="bar-container"><div id="fight-opp-head" class="bar-fill fill-red" style="width: 100%;"></div></div>
+              <div class="bar-container"><div id="fight-opp-head" class="bar-fill fill-red" style="width: 10%;"></div></div>
               <span style="font-size: 0.75rem; color: var(--text-muted);">Stamina:</span>
               <div class="bar-container"><div id="fight-opp-stam" class="bar-fill fill-green" style="width: 100%;"></div></div>
             </div>
@@ -279,7 +294,7 @@
         </div>
 
         <!-- Tactic Action Buttons -->
-        <h3 style="margin-bottom: 0.6rem; text-align: left; font-size: 1rem;">Round Taktik Kararı:</h3>
+        <h3 style="margin-bottom: 0.6rem; text-align: left; font-size: 1rem;" data-i18n="chooseTactic">Round Taktik Kararı:</h3>
         <div id="tactics-buttons-container" class="tactics-grid">
           <!-- Dynamically populated tactic buttons -->
         </div>
@@ -290,16 +305,22 @@
     <!-- SCREEN 5: RANKINGS & ORGANIZATIONS -->
     <section id="screen-rankings" class="screen">
       <div class="glass-card">
-        <h2>🏆 Dünya Sıralaması</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap;">
+          <h2 style="margin: 0;" data-i18n="tabRankings">🏆 Dövüş Sıralamaları</h2>
+          <div style="display: flex; gap: 0.4rem;">
+            <button id="btn-rankings-pro" class="btn btn-sm btn-gold" onclick="window.app.switchRankingsTab('pro')" data-i18n="btnRankPro">👑 Profesyonel</button>
+            <button id="btn-rankings-amateur" class="btn btn-sm btn-secondary" onclick="window.app.switchRankingsTab('amateur')" data-i18n="btnRankAmateur">🥊 Amatör Lig</button>
+          </div>
+        </div>
         <div class="table-responsive">
           <table class="rankings-table">
             <thead>
               <tr>
-                <th>Sıra</th>
-                <th>Dövüşçü</th>
-                <th>Stil</th>
-                <th>Rekor</th>
-                <th>OVR</th>
+                <th data-i18n="rankHeadRank">Sıra</th>
+                <th data-i18n="rankHeadFighter">Dövüşçü</th>
+                <th data-i18n="rankHeadStyle">Stil</th>
+                <th data-i18n="rankHeadRecord">Rekor</th>
+                <th data-i18n="rankHeadOvr">OVR</th>
               </tr>
             </thead>
             <tbody id="rankings-tbody">
@@ -310,25 +331,30 @@
       </div>
     </section>
 
-    <!-- SCREEN 6: SOCIAL MEDIA -->
+    <!-- SCREEN 6: SOCIAL MEDIA & SPONSORS -->
     <section id="screen-social" class="screen">
       <div class="glass-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap;">
           <div>
-            <h2 style="margin: 0;">📱 Sosyal Medya</h2>
+            <h2 style="margin: 0;" data-i18n="socialTitle">📱 Sosyal Medya</h2>
             <span id="social-player-handle" style="font-size: 0.78rem; color: var(--accent-cyan); font-weight: 600;"></span>
           </div>
-          <div class="stat-pill">Haftalık Gönderi Hakkı: <strong id="social-post-limit-text" style="color: var(--accent-gold);">3 / 3</strong></div>
+          <div class="stat-pill"><span data-i18n="postLimit">Haftalık Gönderi Hakkı:</span> <strong id="social-post-limit-text" style="color: var(--accent-gold);">3 / 3</strong></div>
         </div>
 
         <div style="display: flex; gap: 0.6rem; margin-bottom: 1.2rem; flex-wrap: wrap;">
-          <button id="btn-post-trash" class="btn btn-cyan" style="flex:1;" onclick="window.app.postSocial('trash_talk')">💥 Trash Talk</button>
-          <button id="btn-post-respect" class="btn btn-secondary" style="flex:1;" onclick="window.app.postSocial('show_respect')">🤝 Saygı</button>
-          <button id="btn-post-flex" class="btn btn-gold" style="flex:1;" onclick="window.app.postSocial('flex_lifestyle')">🏎️ Lüks Yaşam</button>
+          <button id="btn-post-trash" class="btn btn-cyan" style="flex:1;" onclick="window.app.postSocial('trash_talk')" data-i18n="btnTrashTalk">💥 Trash Talk</button>
+          <button id="btn-post-respect" class="btn btn-secondary" style="flex:1;" onclick="window.app.postSocial('show_respect')" data-i18n="btnRespect">🤝 Saygı</button>
+          <button id="btn-post-flex" class="btn btn-gold" style="flex:1;" onclick="window.app.postSocial('flex_lifestyle')" data-i18n="btnFlex">🏎️ Lüks Yaşam</button>
         </div>
 
         <div id="social-feed-container">
           <!-- Social feed posts -->
+        </div>
+
+        <!-- Feature 6: Contract Sponsorships Section -->
+        <div id="sponsors-section-container" class="glass-card" style="margin-top: 1rem; border-color: var(--accent-gold);">
+          <!-- Dynamically loaded sponsor contracts -->
         </div>
       </div>
     </section>
@@ -338,12 +364,12 @@
       <!-- 💎 DIAMOND & DONATION STORE -->
       <div class="glass-card" style="border-color: var(--accent-cyan); margin-bottom: 1rem; background: radial-gradient(circle at top right, rgba(0,243,255,0.12), rgba(18,22,31,0.95));">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-          <h2 style="font-size: 1.1rem; color: var(--accent-cyan);">💎 Elmas & Geliştiriciye Bağış Mağazası</h2>
+          <h2 style="font-size: 1.1rem; color: var(--accent-cyan);" data-i18n="shopDiamondsTitle">💎 Elmas & Geliştiriciye Bağış Mağazası</h2>
           <span style="font-size: 0.8rem; background: rgba(0,243,255,0.15); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 2px 8px; border-radius: 12px; font-weight: bold;">
-            Bakiye: <span id="shop-diamond-balance">50</span> 💎
+            <span data-i18n="balance">Bakiye</span>: <span id="shop-diamond-balance">5</span> 💎
           </span>
         </div>
-        <p style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+        <p style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 0.8rem;" data-i18n="shopDiamondsDesc">
           Oyunu desteklemek ve efsanevî eldivenler, altın takasları ve VIP ayrıcalıklar açmak için Elmas paketlerini tercih edebilirsiniz:
         </p>
         <div id="diamond-packages-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem;">
@@ -355,8 +381,8 @@
       <div class="glass-card" style="border-color: var(--accent-gold); margin-bottom: 1rem; background: radial-gradient(circle at top left, rgba(255,215,0,0.1), rgba(18,22,31,0.95));">
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <h2 style="font-size: 1.1rem; color: var(--accent-gold);">🛡️ Reklam Engelleme & VIP Dövüşçü Statüsü</h2>
-            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">
+            <h2 style="font-size: 1.1rem; color: var(--accent-gold);" data-i18n="shopVipTitle">🛡️ Reklam Engelleme & VIP Dövüşçü Statüsü</h2>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;" data-i18n="shopVipDesc">
               • Reklamsız Kesintisiz Deneyim<br>
               • Dövüş Kazanımlarında <strong>+%15 Ekstra Altın Bonusu</strong><br>
               • VIP Profil Rozeti & Altın İsim Parlaması
@@ -370,8 +396,8 @@
 
       <!-- 💱 GEM TO GOLD EXCHANGE -->
       <div class="glass-card" style="border-color: var(--accent-gold); margin-bottom: 1rem;">
-        <h2 style="font-size: 1.1rem; color: var(--accent-gold);">💱 Döviz Bürosu (Elmas ➔ Altın Takası)</h2>
-        <p style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+        <h2 style="font-size: 1.1rem; color: var(--accent-gold);" data-i18n="shopExchangeTitle">💱 Döviz Bürosu (Elmas ➔ Altın Takası)</h2>
+        <p style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 0.6rem;" data-i18n="shopExchangeDesc">
           Elmaslarınızı anında oyun içi nakit paraya (💰) dönüştürebilirsiniz:
         </p>
         <div id="gold-exchange-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem;">
@@ -379,32 +405,9 @@
         </div>
       </div>
 
-      <!-- Nutrition & Diet Market -->
-      <div class="glass-card" style="border-color: var(--bg-card-border); margin-bottom: 1rem;">
-        <h2 style="font-size: 1.1rem; color: var(--accent-gold);">🍎 Beslenme & Kütle Marketi</h2>
-        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem;">
-          Dövüşçü Kilosu: <strong id="shop-current-weight" style="color: var(--accent-cyan);">74.1 kg</strong> | Siklet Limiti: <strong id="shop-target-weight" style="color: var(--accent-gold);">70.3 kg</strong>
-        </p>
-        <div id="nutrition-items-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem;">
-          <!-- Dynamically loaded nutrition items -->
-        </div>
-      </div>
-
-      <!-- Weight Class Division Switcher -->
-      <div class="glass-card" style="border-color: var(--accent-cyan); margin-bottom: 1rem;">
-        <h2 style="font-size: 1.1rem; color: var(--accent-cyan);">⚖️ Siklet Değiştir / Yükselt</h2>
-        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem;">
-          Kilonuz arttıysa veya farklı bir sıklet sınıfında yarışmak istiyorsanız sıkletinizi değiştirebilirsiniz:
-        </p>
-        <div style="display: flex; gap: 0.6rem; align-items: center;">
-          <select id="shop-weight-class-select" class="form-control" style="flex:1;"></select>
-          <button class="btn btn-cyan btn-sm" onclick="window.app.changeWeightClassFromShop()">⚖️ Siklete Geç</button>
-        </div>
-      </div>
-
       <!-- Gym Upgrades -->
       <div class="glass-card">
-        <h2 style="font-size: 1.1rem;">🏬 Salon & Tesis Yükseltmeleri</h2>
+        <h2 style="font-size: 1.1rem;" data-i18n="shopGymTitle">🏬 Salon & Tesis Yükseltmeleri</h2>
         <div id="gym-upgrades-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem; margin-top: 0.6rem;">
           <!-- Dynamically loaded gym upgrades -->
         </div>
@@ -421,8 +424,8 @@
       <!-- Glove Catalog Store & Locker -->
       <div class="glass-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap;">
-          <h2 style="font-size: 1.2rem; color: var(--accent-cyan);">🥊 Eldiven Ekipman Mağazası & Soyunma Odası</h2>
-          <span style="font-size: 0.78rem; color: var(--text-muted);">Eldivenler dövüşte <strong>% Stat Bonusu</strong> verir</span>
+          <h2 style="font-size: 1.2rem; color: var(--accent-cyan);" data-i18n="glovesTitle">🥊 Eldiven Ekipman Mağazası & Soyunma Odası</h2>
+          <span style="font-size: 0.78rem; color: var(--text-muted);" data-i18n="glovesDesc">Eldivenler dövüşte <strong>% Stat Bonusu</strong> verir</span>
         </div>
         <div id="gloves-catalog-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.8rem;">
           <!-- Dynamically populated gloves cards -->
@@ -433,17 +436,17 @@
     <!-- SCREEN 8: LEGACY & GOAT RANK -->
     <section id="screen-legacy" class="screen">
       <div class="glass-card" style="text-align: center;">
-        <h2 style="font-size: 1.8rem; color: var(--accent-gold);">👑 GOAT Derecelendirmesi</h2>
+        <h2 style="font-size: 1.8rem; color: var(--accent-gold);" data-i18n="goatRanking">👑 GOAT Derecelendirmesi</h2>
 
         <div style="font-size: 2.2rem; font-family: var(--font-heading); color: var(--accent-gold); margin: 0.8rem 0;">
-          GOAT Puanı: <span id="legacy-goat-score">0</span>
+          <span data-i18n="goatScore">GOAT Puanı:</span> <span id="legacy-goat-score">0</span>
         </div>
 
         <div id="legacy-summary-details" style="text-align: left; max-width: 450px; margin: 0 auto; background: rgba(0,0,0,0.4); padding: 1.2rem; border-radius: 12px; font-size: 0.9rem;">
           <!-- Summary items -->
         </div>
 
-        <button id="btn-retire-career" class="btn btn-gold" style="margin-top: 1.5rem; width: 100%;">
+        <button id="btn-retire-career" class="btn btn-gold" style="margin-top: 1.5rem; width: 100%;" data-i18n="retireCareer">
           🏆 Emekli Ol & Kariyerini Tamamla
         </button>
       </div>
@@ -516,7 +519,38 @@
     </div>
   </div>
 
-  <script src="js/bundle.js?v=14.0"></script>
+  <!-- In-Game Fight Result Modal Overlay -->
+  <div id="fight-result-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 480px; text-align: center; border: 2px solid var(--accent-gold); box-shadow: 0 0 35px rgba(255,215,0,0.3);">
+      <div style="font-size: 2.8rem; margin-bottom: 0.2rem;" id="fight-result-icon">🥊</div>
+      <h2 id="fight-result-title" style="color: var(--accent-gold); font-size: 1.6rem; margin-bottom: 0.2rem;">DÖVÜŞ SONA ERDİ</h2>
+      
+      <div id="fight-result-winner-badge" style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 0.4rem; padding: 0.4rem 0.8rem; background: rgba(255,215,0,0.15); border-radius: 20px; display: inline-block; border: 1px solid var(--accent-gold);">
+        🏆 Kazanan: Devrim McGregor
+      </div>
+      
+      <p id="fight-result-method" style="color: var(--accent-cyan); font-size: 0.9rem; font-weight: 700; margin-bottom: 1.2rem;">
+        Yöntem: Nakavt (KO)
+      </p>
+
+      <div class="glass-card" style="margin-bottom: 1.2rem; background: rgba(0,0,0,0.4); padding: 1rem; border-color: rgba(255,255,255,0.15);">
+        <h4 style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.8rem;">🏆 KAZANILAN ÖDÜLLER</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;" id="fight-result-rewards-grid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <button id="btn-fight-result-double-reward" class="btn btn-cyan" style="width: 100%; font-size: 0.95rem; padding: 0.75rem 1rem; font-weight: 800; margin-bottom: 0.6rem;" onclick="window.app.watchAdForDoubleReward()">
+        🎥 2X MAÇ ÖDÜLÜ KAZAN (REKLAM İZLE)
+      </button>
+
+      <button id="btn-fight-result-close" class="btn btn-gold" style="width: 100%; font-size: 1rem; padding: 0.8rem 1rem; font-weight: 800;" onclick="window.app.closeFightResultModal()">
+        🔥 ANA SAYFAYA DÖN & KARİYERE DEVAM ET
+      </button>
+    </div>
+  </div>
+
+  <script src="js/bundle.js?v=15.0"></script>
   <script>
     // Capacitor iOS platform detection & native app behavior
     (function() {

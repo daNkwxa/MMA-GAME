@@ -157,16 +157,74 @@ export class FightEngine {
   }
 
   chooseAITactic() {
-    const style = this.opponent.styleKey;
-    const hp = this.state.opponent.headHp;
+    const opp = this.opponent;
+    const aiState = this.state.opponent;
+    const playerState = this.state.player;
+    const stamina = aiState.stamina;
+    const hp = Math.min(aiState.headHp, aiState.bodyHp);
+    const playerHp = Math.min(playerState.headHp, playerState.bodyHp);
+    const roundNum = this.currentRound;
 
-    if (hp < 35) return 'defend';
-    if (style === 'boxer') return Math.random() > 0.4 ? 'counter' : 'pressure';
-    if (style === 'kickboxer') return Math.random() > 0.4 ? 'kicks' : 'counter';
-    if (style === 'wrestler') return Math.random() > 0.3 ? 'takedown' : 'clinch';
-    if (style === 'bjj') return Math.random() > 0.3 ? 'submission' : 'takedown';
-    if (style === 'muaythai') return Math.random() > 0.4 ? 'clinch' : 'kicks';
-    return 'pressure';
+    const aggression = opp.aggression !== undefined ? opp.aggression : 60;
+    const riskTolerance = opp.riskTolerance !== undefined ? opp.riskTolerance : 50;
+    const finishInstinct = opp.finishInstinct !== undefined ? opp.finishInstinct : 70;
+    const cardioMgmt = opp.cardioManagement || 'balanced';
+    const archetypeKey = opp.archetypeKey || 'pressure_fighter';
+
+    // 1. Finish Instinct: If player HP is severely compromised (< 35), hunt for finish!
+    if (playerHp < 35 && Math.random() * 100 < finishInstinct) {
+      if (opp.stats && opp.stats.submission > 40 && Math.random() > 0.5) {
+        return 'submission';
+      }
+      return 'pressure';
+    }
+
+    // 2. Scorecards Desperation: Check if AI is trailing in roundScores in round 3+
+    let aiScoreSum = 0;
+    let pScoreSum = 0;
+    (this.state.roundScores || []).forEach(sc => {
+      aiScoreSum += sc.opponent;
+      pScoreSum += sc.player;
+    });
+
+    const isBehindOnPoints = roundNum >= 3 && aiScoreSum < pScoreSum;
+    if (isBehindOnPoints && Math.random() * 100 < riskTolerance) {
+      // AI is losing on points! High risk push for KO/Takedown
+      return Math.random() > 0.4 ? 'pressure' : 'takedown';
+    }
+
+    // 3. Low Stamina & Cardio Management
+    if (stamina < 30) {
+      if (cardioMgmt === 'conservative' || (cardioMgmt === 'balanced' && Math.random() > 0.3)) {
+        return 'defend';
+      }
+    }
+
+    // 4. Low HP Defensive Reaction
+    if (hp < 30) {
+      if (opp.defensiveStyle === 'high_guard' || opp.defensiveStyle === 'counter_first') {
+        return Math.random() > 0.4 ? 'defend' : 'counter';
+      } else if (opp.defensiveStyle === 'wrestling_defense') {
+        return Math.random() > 0.4 ? 'takedown' : 'defend';
+      }
+      return 'defend';
+    }
+
+    // 5. Archetype Tactical Selection
+    if (archetypeKey === 'wrestler') {
+      return Math.random() > 0.3 ? 'takedown' : 'clinch';
+    } else if (archetypeKey === 'grappler') {
+      return Math.random() > 0.35 ? 'submission' : 'takedown';
+    } else if (archetypeKey === 'counter_fighter') {
+      return Math.random() > 0.35 ? 'counter' : 'kicks';
+    } else if (archetypeKey === 'technical_striker') {
+      return Math.random() > 0.35 ? 'kicks' : 'counter';
+    } else if (archetypeKey === 'wild_brawler') {
+      return Math.random() > 0.2 ? 'pressure' : 'clinch';
+    } else {
+      // Pressure Fighter / Default
+      return Math.random() > 0.4 ? 'pressure' : 'counter';
+    }
   }
 
   calculateTacticEfficiency(fighter, tacticId, state) {
@@ -192,23 +250,49 @@ export class FightEngine {
     let pScore = 0;
     let aiScore = 0;
     const isEn = window.app && window.app.lang === 'en';
+    const pName = this.player.name;
+    const oppName = this.opponent.name;
+
+    const pStrikesTR = [
+      `🥊 ${pName} sert bir sol jab - sağ direk kombosuyla ${oppName}'ı sarsıyor!`,
+      `💥 ${pName} mükemmel zamanlamayla aparkat çıkarıp ${oppName}'ın dengesini bozdu!`,
+      `⚡ ${pName} çengelle sert bir kroşe oturtuyor! ${oppName} geriye yalpaladı!`
+    ];
+    const pStrikesEN = [
+      `🥊 ${pName} landed a crisp jab-cross combination on ${oppName}!`,
+      `💥 ${pName} connected with a brutal uppercut, staggering ${oppName}!`,
+      `⚡ ${pName} caught ${oppName} with a sharp hook!`
+    ];
+
+    const aiStrikesTR = [
+      `⚠️ ${oppName} sert bir kontra vuruşla karşılık verdi!`,
+      `💥 ${oppName} güçlü bir kroşeyle seni geriye püskürttü!`,
+      `⚡ ${oppName} hızlı bir kombinasyonla savunmanı deldi!`
+    ];
+    const aiStrikesEN = [
+      `⚠️ ${oppName} countered with a powerful strike!`,
+      `💥 ${oppName} landed a heavy hook pushing you back!`,
+      `⚡ ${oppName} breached your guard with a quick combination!`
+    ];
 
     if (pEff > aiEff * 1.2) {
       // Player clean exchange win
       const dmg = Math.floor((pEff - aiEff * 0.5) * 0.35);
       if (['counter', 'pressure', 'kicks'].includes(pTactic)) {
         this.state.opponent.headHp -= dmg;
-        this.addCommentary(isEn ? `🥊 ${this.player.name} landed a clean strike combination on ${this.opponent.name}! (-${dmg} HP)` : `🥊 ${this.player.name} harika bir ${pTactic} kombinasyonuyla ${this.opponent.name}'ın çenesini sarstı! (-${dmg} HP)`, 'player_hit');
+        const pool = isEn ? pStrikesEN : pStrikesTR;
+        const line = pool[Math.floor(Math.random() * pool.length)];
+        this.addCommentary(`${line} (-${dmg} HP)`, 'player_hit');
       } else if (pTactic === 'takedown') {
         this.state.position = 'ground_mount';
         this.state.positionOwner = 'player';
         this.state.opponent.bodyHp -= Math.floor(dmg * 0.7);
-        this.addCommentary(isEn ? `🤼 ${this.player.name} executed a beautiful takedown!` : `🤼 ${this.player.name} mükemmel bir timing ile takedown aldı ve yere serdi!`, 'player_hit');
+        this.addCommentary(isEn ? `🤼 ${pName} executed a double-leg takedown!` : `🤼 ${pName} mükemmel bir timing ile çift bacak takedown aldı!`, 'player_hit');
       } else if (pTactic === 'submission') {
         this.state.opponent.subDanger += Math.floor(dmg * 1.8);
-        this.addCommentary(isEn ? `🥋 ${this.player.name} locked in a deep submission hold! Danger!` : `🥋 ${this.player.name} derin bir Guillotine Choke / Armbar kilidi yakaladı! Pes ettirme tehlikesi!`, 'player_hit');
+        this.addCommentary(isEn ? `🥋 ${pName} locked in a deep submission attempt!` : `🥋 ${pName} derin bir kilit/pes ettirme poziyonu yakaladı!`, 'player_hit');
       } else {
-        this.addCommentary(isEn ? `✨ ${this.player.name} evaded and controlled the exchange.` : `✨ ${this.player.name} rakipten kaçındı ve kontrolü sağladı.`, 'normal');
+        this.addCommentary(isEn ? `✨ ${pName} controlled the distance and negated damage.` : `✨ ${pName} mesafeyi korudu ve hamleyi boşa çıkardı.`, 'normal');
       }
       pScore = 10;
       aiScore = 3;
@@ -217,17 +301,19 @@ export class FightEngine {
       const dmg = Math.floor((aiEff - pEff * 0.5) * 0.35);
       if (['counter', 'pressure', 'kicks'].includes(aiTactic)) {
         this.state.player.headHp -= dmg;
-        this.addCommentary(isEn ? `⚠️ ${this.opponent.name} hit you with a heavy strike! (-${dmg} HP)` : `⚠️ ${this.opponent.name} sert bir vuruşla seni geriye püskürttü! (-${dmg} HP)`, 'danger');
+        const pool = isEn ? aiStrikesEN : aiStrikesTR;
+        const line = pool[Math.floor(Math.random() * pool.length)];
+        this.addCommentary(`${line} (-${dmg} HP)`, 'danger');
       } else if (aiTactic === 'takedown') {
         this.state.position = 'ground_guard';
         this.state.positionOwner = 'opponent';
         this.state.player.bodyHp -= Math.floor(dmg * 0.7);
-        this.addCommentary(isEn ? `🤼 ${this.opponent.name} took you down to the canvas!` : `🤼 ${this.opponent.name} seni yakaladı ve yere indirdi!`, 'danger');
+        this.addCommentary(isEn ? `🤼 ${oppName} dragged you down to the canvas!` : `🤼 ${oppName} seni yakaladı ve yere indirdi!`, 'danger');
       } else if (aiTactic === 'submission') {
         this.state.player.subDanger += Math.floor(dmg * 1.8);
-        this.addCommentary(isEn ? `⚠️ ${this.opponent.name} locked in a submission hold! You are in danger!` : `⚠️ ${this.opponent.name} boynuna sarıldı! Pes etme tehlikesindesin!`, 'danger');
+        this.addCommentary(isEn ? `⚠️ ${oppName} locked in a submission hold! Danger!` : `⚠️ ${oppName} boynunu yakaladı! Pes etme tehlikesindesin!`, 'danger');
       } else {
-        this.addCommentary(isEn ? `🛑 ${this.opponent.name} negated your attack.` : `🛑 ${this.opponent.name} hamleni boşa çıkardı.`, 'normal');
+        this.addCommentary(isEn ? `🛑 ${oppName} negated your attempt.` : `🛑 ${oppName} atağını etkisiz hale getirdi.`, 'normal');
       }
       pScore = 3;
       aiScore = 10;
@@ -235,7 +321,7 @@ export class FightEngine {
       // Even exchange
       this.state.player.headHp -= 4;
       this.state.opponent.headHp -= 4;
-      this.addCommentary(isEn ? `⚔️ Both fighters exchanged heavy blows!` : `⚔️ İki dövüşçü de karşılıklı sert yumruklar teati etti!`, 'normal');
+      this.addCommentary(isEn ? `⚔️ Both fighters exchanged heavy blows in close range!` : `⚔️ İki dövüşçü de yakın mesafede karşılıklı sert darbelere girdi!`, 'normal');
       pScore = 5;
       aiScore = 5;
     }
