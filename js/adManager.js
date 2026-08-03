@@ -3,14 +3,14 @@
 
 export class AdManager {
   constructor() {
-    // Official Google AdMob Production & Test Ad IDs
-    this.AD_UNITS = {
+    // Official Google AdMob Rewarded Test Ad IDs
+    this.TEST_AD_UNITS = {
       android: 'ca-app-pub-4672765985243640/9005989954',
-      ios: 'ca-app-pub-4672765985243640/6690852220'
+      ios: 'ca-app-pub-3940256099942544/1712485638'
     };
 
     this.platform = this.detectPlatform();
-    this.adUnitId = this.AD_UNITS[this.platform] || this.AD_UNITS.ios;
+    this.adUnitId = this.TEST_AD_UNITS[this.platform] || this.TEST_AD_UNITS.android;
 
     this.isAdReady = false;
     this.isLoading = false;
@@ -32,13 +32,6 @@ export class AdManager {
 
   // Initialize AdMob Plugin / Web Fallback Bridge
   async initAdMob() {
-    if (this.platform === 'ios') {
-      console.log('[AdManager] Ads disabled for iOS platform.');
-      this.isNativePluginAvailable = false;
-      this.isAdReady = true;
-      return;
-    }
-
     try {
       if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
         const { AdMob } = window.Capacitor.Plugins;
@@ -98,12 +91,6 @@ export class AdManager {
   // onSuccess: Callback executed ONLY when the user watches the entire video
   // onCancel: Callback executed if the ad fails or user cancels early
   async showRewardedAd(onSuccess, onCancel) {
-    if (this.platform === 'ios') {
-      console.log('[AdManager] Ads disabled for iOS. Granting reward instantly.');
-      if (typeof onSuccess === 'function') onSuccess();
-      return;
-    }
-
     if (!this.isReady()) {
       // Re-trigger preload and show web simulation fallback if unavailable
       await this.preloadRewardedAd();

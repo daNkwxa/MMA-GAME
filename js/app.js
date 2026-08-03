@@ -5,7 +5,6 @@ import { Fighter } from './fighter.js';
 import { CareerManager } from './career.js';
 import { FightEngine } from './fightEngine.js';
 import { AdManager } from './adManager.js';
-import { RoundSimulationController } from './roundSimulationController.js';
 import { sfx } from './audio.js';
 
 const SAVE_KEY = 'mma_goat_save_v2';
@@ -19,8 +18,6 @@ export const TRANSLATIONS = {
     btnNewCareer: '🚀 Yeni Kariyer Başlat',
     btnDeleteSave: '🗑️ Kayıtlı Kariyeri Sil',
     homeMenu: '🏠 Ana Menü',
-    btnBack: '⬅️ Geri',
-    btnBackMenu: '⬅️ Ana Menü',
 
     newFighter: '🥋 Yeni Dövüşçü',
     labelName: 'İsim',
@@ -127,8 +124,6 @@ export const TRANSLATIONS = {
     btnNewCareer: '🚀 Start New Career',
     btnDeleteSave: '🗑️ Delete Saved Career',
     homeMenu: '🏠 Main Menu',
-    btnBack: '⬅️ Back',
-    btnBackMenu: '⬅️ Main Menu',
 
     newFighter: '🥋 New Fighter',
     labelName: 'Name',
@@ -238,81 +233,9 @@ class MMAGoatApp {
     this.selectedStyleKey = 'boxer';
     this.lang = localStorage.getItem('mma_goat_lang') || 'tr';
     this.adManager = new AdManager();
-    this.screenHistory = [];
-    this.currentScreenId = 'screen-main-menu';
 
     this.initUI();
-    this.initHistoryAndBackButton();
     this.checkExistingSave();
-  }
-
-  initHistoryAndBackButton() {
-    try {
-      history.replaceState({ screenId: 'screen-main-menu' }, '');
-    } catch (e) {}
-
-    window.addEventListener('popstate', (e) => {
-      if (e.state && e.state.screenId) {
-        this.switchScreen(e.state.screenId, true);
-      } else if (this.screenHistory.length > 0) {
-        this.goBack(true);
-      }
-    });
-
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-      try {
-        window.Capacitor.Plugins.App.addListener('backButton', () => {
-          if (this.canGoBack()) {
-            this.goBack();
-          } else if (window.Capacitor.Plugins.App.minimizeApp) {
-            window.Capacitor.Plugins.App.minimizeApp();
-          }
-        });
-      } catch (e) {
-        console.log('Capacitor App listener note:', e);
-      }
-    }
-  }
-
-  canGoBack() {
-    if (this.currentScreenId === 'screen-creation') return true;
-    if (this.screenHistory.length > 0) return true;
-    if (this.player && this.currentScreenId !== 'screen-dashboard' && this.currentScreenId !== 'screen-main-menu') return true;
-    return false;
-  }
-
-  goBack(isPopState = false) {
-    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
-
-    if (this.currentScreenId === 'screen-creation') {
-      this.screenHistory = [];
-      if (!isPopState) {
-        try { history.pushState({ screenId: 'screen-main-menu' }, ''); } catch (e) {}
-      }
-      this.switchScreen('screen-main-menu', true);
-      return;
-    }
-
-    if (this.screenHistory.length > 0) {
-      const prevScreen = this.screenHistory.pop();
-      if (!isPopState) {
-        try { history.back(); } catch (e) {}
-      }
-      this.switchScreen(prevScreen, true);
-      return;
-    }
-
-    if (this.player && this.currentScreenId !== 'screen-dashboard') {
-      if (!isPopState) {
-        try { history.pushState({ screenId: 'screen-dashboard' }, ''); } catch (e) {}
-      }
-      this.switchScreen('screen-dashboard', true);
-    } else {
-      if (!isPopState) {
-        try { history.pushState({ screenId: 'screen-main-menu' }, ''); } catch (e) {}
-      }
-      this.switchScreen('screen-main-menu', true);
-    }
   }
 
   t(key) {
@@ -349,7 +272,7 @@ class MMAGoatApp {
       const key = el.dataset.i18n;
       const translation = this.t(key);
       if (translation) {
-        el.innerHTML = translation;
+        el.innerText = translation;
       }
     });
 
@@ -448,9 +371,6 @@ class MMAGoatApp {
 
       // Reconstruct Fighter
       this.player = new Fighter(data.player);
-      if (!this.player.id || !this.player.id.startsWith('player_main')) {
-        this.player.id = 'player_main_' + Date.now();
-      }
 
       // Reconstruct CareerManager
       this.career = new CareerManager(this.player, data.career);
@@ -464,25 +384,12 @@ class MMAGoatApp {
         this.career.financialHistory = data.career.financialHistory || [];
         this.career.activeSponsorships = data.career.activeSponsorships || [];
 
-        const seenIds = new Set([this.player.id]);
-
         // Reconstruct amateur rankings safely
         if (data.career.amateurRankings && Array.isArray(data.career.amateurRankings)) {
           this.career.amateurRankings = data.career.amateurRankings
             .filter(rData => rData !== null && rData !== undefined)
             .map(rData => {
-              if (rData.id === this.player.id || rData.name === this.player.name) {
-                if (rData.name && rData.name !== this.player.name) {
-                  rData.id = 'ai_am_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
-                  seenIds.add(rData.id);
-                  return new Fighter(rData);
-                }
-                return this.player;
-              }
-              if (seenIds.has(rData.id)) {
-                rData.id = 'ai_am_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
-              }
-              seenIds.add(rData.id);
+              if (rData.id === this.player.id) return this.player;
               return new Fighter(rData);
             });
         } else {
@@ -494,18 +401,7 @@ class MMAGoatApp {
           this.career.rankings = data.career.rankings
             .filter(rData => rData !== null && rData !== undefined)
             .map(rData => {
-              if (rData.id === this.player.id || rData.name === this.player.name) {
-                if (rData.name && rData.name !== this.player.name) {
-                  rData.id = 'ai_pro_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
-                  seenIds.add(rData.id);
-                  return new Fighter(rData);
-                }
-                return this.player;
-              }
-              if (seenIds.has(rData.id)) {
-                rData.id = 'ai_pro_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
-              }
-              seenIds.add(rData.id);
+              if (rData.id === this.player.id) return this.player;
               return new Fighter(rData);
             });
         }
@@ -534,8 +430,7 @@ class MMAGoatApp {
       document.getElementById('main-nav-tabs').style.display = 'flex';
       document.querySelector('main')?.classList.remove('no-header', 'no-nav');
 
-      this.screenHistory = [];
-      this.switchScreen('screen-dashboard', true);
+      this.switchScreen('screen-dashboard');
       this.updateHeaderAndDashboard();
       return true;
     } catch (e) {
@@ -645,21 +540,10 @@ class MMAGoatApp {
     document.getElementById('btn-return-menu')?.addEventListener('click', () => {
       sfx.playClick();
       this.saveGame();
-      this.screenHistory = [];
       document.getElementById('top-header').style.display = 'none';
       document.getElementById('main-nav-tabs').style.display = 'none';
       document.querySelector('main')?.classList.add('no-header', 'no-nav');
-      this.switchScreen('screen-main-menu', true);
-    });
-
-    // Cancel Character Creation / Back Button
-    document.getElementById('btn-cancel-creation')?.addEventListener('click', () => {
-      this.goBack();
-    });
-
-    // Top Header Back Button
-    document.getElementById('btn-header-back')?.addEventListener('click', () => {
-      this.goBack();
+      this.switchScreen('screen-main-menu');
     });
 
     // Start Career Button
@@ -721,7 +605,6 @@ class MMAGoatApp {
     const socialHandle = socialRaw || '@' + name.toLowerCase().replace(/\s+/g, '');
 
     this.player = new Fighter({
-      id: 'player_main_' + Date.now(),
       name: name,
       age: 18,
       country: countryObj,
@@ -740,28 +623,11 @@ class MMAGoatApp {
     document.getElementById('main-nav-tabs').style.display = 'flex';
     document.querySelector('main')?.classList.remove('no-header', 'no-nav');
 
-    this.screenHistory = [];
-    this.switchScreen('screen-dashboard', true);
+    this.switchScreen('screen-dashboard');
     this.updateHeaderAndDashboard();
   }
 
-  switchScreen(screenId, isBack = false) {
-    if (!screenId) return;
-
-    // Don't push duplicate adjacent screen
-    if (!isBack && this.currentScreenId && this.currentScreenId !== screenId) {
-      this.screenHistory.push(this.currentScreenId);
-      try {
-        history.pushState({ screenId }, '');
-      } catch (e) {}
-    }
-
-    if (screenId === 'screen-main-menu') {
-      this.screenHistory = [];
-    }
-
-    this.currentScreenId = screenId;
-
+  switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const targetScreen = document.getElementById(screenId);
     if (targetScreen) targetScreen.classList.add('active');
@@ -774,16 +640,6 @@ class MMAGoatApp {
         btn.classList.remove('active');
       }
     });
-
-    // Update Top Header Back Button visibility
-    const headerBackBtn = document.getElementById('btn-header-back');
-    if (headerBackBtn) {
-      if (this.player && (this.screenHistory.length > 0 || screenId !== 'screen-dashboard')) {
-        headerBackBtn.style.display = 'inline-flex';
-      } else {
-        headerBackBtn.style.display = 'none';
-      }
-    }
 
     // Update screen specific content
     if (screenId === 'screen-dashboard') this.updateHeaderAndDashboard();
@@ -1272,14 +1128,6 @@ class MMAGoatApp {
     const oppStyleEl = document.getElementById('fight-opp-style');
     if (oppStyleEl) oppStyleEl.innerText = oppStyle;
 
-    const canvasEl = document.getElementById('fight-octagon-canvas');
-    if (canvasEl) {
-      if (!this.roundSimController) {
-        this.roundSimController = new RoundSimulationController(canvasEl);
-      }
-      this.roundSimController.initArena(this.fightEngine);
-    }
-
     this.renderTacticsButtons();
     this.updateFightUI();
   }
@@ -1305,44 +1153,20 @@ class MMAGoatApp {
     if (!this.fightEngine || this.fightEngine.isFinished) return;
 
     sfx.playPunch();
+    const outcome = this.fightEngine.playRound(tacticId);
 
-    // Disable tactics buttons during visual round simulation
-    const tacticBtns = document.querySelectorAll('.tactic-btn');
-    tacticBtns.forEach(b => b.style.pointerEvents = 'none');
+    this.updateFightUI();
 
-    if (this.roundSimController) {
-      this.roundSimController.startRoundSimulation(tacticId, (outcome) => {
-        tacticBtns.forEach(b => b.style.pointerEvents = 'auto');
-        this.updateFightUI();
+    if (outcome && outcome.winner) {
+      sfx.playBell();
+      if (outcome.winner === 'player') sfx.playCrowdCheer();
 
-        if (outcome && outcome.winner) {
-          sfx.playBell();
-          if (outcome.winner === 'player') sfx.playCrowdCheer();
+      const resultObj = this.career.handlePostFightResults(outcome, this.fightEngine.opponent);
+      this.saveGame();
 
-          const resultObj = this.career.handlePostFightResults(outcome, this.fightEngine.opponent);
-          this.saveGame();
-
-          setTimeout(() => {
-            this.showFightResultModal(outcome, resultObj);
-          }, 700);
-        }
-      });
-    } else {
-      const outcome = this.fightEngine.playRound(tacticId);
-      tacticBtns.forEach(b => b.style.pointerEvents = 'auto');
-      this.updateFightUI();
-
-      if (outcome && outcome.winner) {
-        sfx.playBell();
-        if (outcome.winner === 'player') sfx.playCrowdCheer();
-
-        const resultObj = this.career.handlePostFightResults(outcome, this.fightEngine.opponent);
-        this.saveGame();
-
-        setTimeout(() => {
-          this.showFightResultModal(outcome, resultObj);
-        }, 700);
-      }
+      setTimeout(() => {
+        this.showFightResultModal(outcome, resultObj);
+      }, 700);
     }
   }
 
