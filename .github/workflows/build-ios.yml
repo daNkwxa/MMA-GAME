@@ -27,6 +27,8 @@ jobs:
       - name: CocoaPods kur
         run: |
           cd ios/App
+          rm -f Podfile.lock
+          rm -rf Pods
           pod install --repo-update
           cd ../..
 
