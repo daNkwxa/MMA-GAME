@@ -42,6 +42,7 @@ jobs:
             -sdk iphoneos \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
+            IPHONEOS_DEPLOYMENT_TARGET=15.0 \
             archive
 
       - name: Payload klasörü oluştur ve IPA paketle
