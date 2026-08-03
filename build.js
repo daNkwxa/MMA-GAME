@@ -12,6 +12,13 @@ const files = [
   'career.js',
   'fightEngine.js',
   'adManager.js',
+  'arenaManager.js',
+  'fighterMovementController.js',
+  'fighterBehaviorController.js',
+  'arenaCollisionManager.js',
+  'combatAnimationController.js',
+  'visualFightRenderer.js',
+  'roundSimulationController.js',
   'app.js'
 ];
 
@@ -59,7 +66,7 @@ fs.copyFileSync(path.join(__dirname, 'styles.css'), path.join(wwwDir, 'styles.cs
 fs.copyFileSync(path.join(jsDir, 'bundle.js'), path.join(wwwJsDir, 'bundle.js'));
 console.log('www/ directory successfully populated for Capacitor mobile builds!');
 console.log('');
-console.log('📱 iOS build hazır! Sonraki adım:');
-console.log('   npx cap sync ios    (veya: npm run build:ios)');
-console.log('   npx cap open ios    (macOS\'ta Xcode\'u açar)');
+console.log('📱 Mobil Derleme Hazır!');
+console.log('   Android için: npm run build:android  (veya npx cap open android)');
+console.log('   iOS için:     npm run build:ios      (veya npx cap open ios)');
 

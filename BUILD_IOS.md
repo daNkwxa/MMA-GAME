@@ -98,6 +98,12 @@ npm run open:ios
 | Deployment Target | iOS 13.0 |
 | Devices | iPhone + iPad |
 
+### 🎯 AdMob iOS Reklam Kodları Entegrasyonu
+
+Projede tanımlı resmi iOS AdMob kodları:
+- **App ID (Info.plist - GADApplicationIdentifier)**: `ca-app-pub-4672765985243640~8255180913`
+- **Ödüllü Reklam (Ad Unit ID)**: `ca-app-pub-4672765985243640/6690852220`
+
 ---
 
 ## 📱 Simulator'da Test Etme

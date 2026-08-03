@@ -5,7 +5,7 @@ import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, FIRST_NAMES, LAST_NAMES, GLOVE
 export class Fighter {
   constructor(config = {}) {
     config = config || {};
-    this.id = config.id || 'player_' + Date.now();
+    this.id = config.id || ('f_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now());
     this.name = config.name || 'Dövüşçü';
     this.nickname = config.nickname || '';
     this.socialHandle = config.socialHandle || '@' + (config.name || 'dovuscu').toLowerCase().replace(/\s+/g, '');
@@ -284,6 +284,7 @@ export function generateAIOpponent(weightClass, orgTier = 1, rank = 10, isTitleF
   const losses = Math.max(0, totalFights - wins);
 
   return new Fighter({
+    id: 'ai_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now(),
     name: `${firstName} ${lastName}`,
     nickname: Math.random() > 0.6 ? `'The Machine'` : '',
     country: country,

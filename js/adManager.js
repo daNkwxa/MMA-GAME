@@ -3,14 +3,14 @@
 
 export class AdManager {
   constructor() {
-    // Official Google AdMob Rewarded Test Ad IDs
-    this.TEST_AD_UNITS = {
-      android: 'ca-app-pub-3940256099942544/5224354917',
-      ios: 'ca-app-pub-3940256099942544/1712485638'
+    // Official Google AdMob Production & Test Ad IDs
+    this.AD_UNITS = {
+      android: 'ca-app-pub-4672765985243640/9005989954',
+      ios: 'ca-app-pub-4672765985243640/6690852220'
     };
 
     this.platform = this.detectPlatform();
-    this.adUnitId = this.TEST_AD_UNITS[this.platform] || this.TEST_AD_UNITS.android;
+    this.adUnitId = this.AD_UNITS[this.platform] || this.AD_UNITS.ios;
 
     this.isAdReady = false;
     this.isLoading = false;
