@@ -50,5 +50,17 @@
 	<false/>
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleLightContent</string>
+	<!-- 🎯 GOOGLE ADMOB APP ID FOR IOS -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-4672765985243640~8255180913</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Size daha alakalı reklamlar ve ödüllü ödüller sunabilmek için izin gereklidir.</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -742,7 +742,7 @@ const sfx = new SoundEffectsEngine();
 class Fighter {
   constructor(config = {}) {
     config = config || {};
-    this.id = config.id || 'player_' + Date.now();
+    this.id = config.id || ('f_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now());
     this.name = config.name || 'Dövüşçü';
     this.nickname = config.nickname || '';
     this.socialHandle = config.socialHandle || '@' + (config.name || 'dovuscu').toLowerCase().replace(/\s+/g, '');
@@ -1021,6 +1021,7 @@ function generateAIOpponent(weightClass, orgTier = 1, rank = 10, isTitleFight = 
   const losses = Math.max(0, totalFights - wins);
 
   return new Fighter({
+    id: 'ai_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now(),
     name: `${firstName} ${lastName}`,
     nickname: Math.random() > 0.6 ? `'The Machine'` : '',
     country: country,
@@ -2182,14 +2183,14 @@ class FightEngine {
 
 class AdManager {
   constructor() {
-    // Official Google AdMob Rewarded Test Ad IDs
-    this.TEST_AD_UNITS = {
+    // Official Google AdMob Production & Test Ad IDs
+    this.AD_UNITS = {
       android: 'ca-app-pub-4672765985243640/9005989954',
-      ios: 'ca-app-pub-3940256099942544/1712485638'
+      ios: 'ca-app-pub-4672765985243640/6690852220'
     };
 
     this.platform = this.detectPlatform();
-    this.adUnitId = this.TEST_AD_UNITS[this.platform] || this.TEST_AD_UNITS.android;
+    this.adUnitId = this.AD_UNITS[this.platform] || this.AD_UNITS.ios;
 
     this.isAdReady = false;
     this.isLoading = false;
@@ -2387,8 +2388,1775 @@ class AdManager {
 }
 
 
+/* --- arenaManager.js --- */
+// MMA GOAT - Octagon Arena Geometry & Canvas Bounds Manager
+
+class ArenaManager {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas ? canvas.getContext('2d') : null;
+    this.width = canvas ? canvas.width : 600;
+    this.height = canvas ? canvas.height : 400;
+
+    this.centerX = this.width / 2;
+    this.centerY = this.height / 2;
+    this.radius = Math.min(this.width, this.height) * 0.42;
+
+    this.vertices = [];
+    this.calculateVertices();
+  }
+
+  resize(width, height) {
+    if (!this.canvas) return;
+    this.width = width;
+    this.height = height;
+    this.canvas.width = width;
+    this.canvas.height = height;
+
+    this.centerX = this.width / 2;
+    this.centerY = this.height / 2;
+    this.radius = Math.min(this.width, this.height) * 0.42;
+    this.calculateVertices();
+  }
+
+  calculateVertices() {
+    this.vertices = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI / 4) * i - Math.PI / 8;
+      const vx = this.centerX + Math.cos(angle) * this.radius;
+      const vy = this.centerY + Math.sin(angle) * this.radius;
+      this.vertices.push({ x: vx, y: vy });
+    }
+  }
+
+  // Constrain position to stay strictly inside the Octagon boundary with padding
+  clampToOctagon(x, y, padding = 18) {
+    const effectiveRadius = this.radius - padding;
+
+    // Check 8 outer segment planes
+    let clampedX = x;
+    let clampedY = y;
+
+    const dx = clampedX - this.centerX;
+    const dy = clampedY - this.centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > effectiveRadius && dist > 0) {
+      const ratio = effectiveRadius / dist;
+      clampedX = this.centerX + dx * ratio;
+      clampedY = this.centerY + dy * ratio;
+    }
+
+    return { x: clampedX, y: clampedY };
+  }
+
+  draw(ctx) {
+    const c = ctx || this.ctx;
+    if (!c) return;
+
+    // 1. Arena Background Shadow
+    c.save();
+    c.fillStyle = '#0f172a';
+    c.fillRect(0, 0, this.width, this.height);
+
+    // Outer Octagon Glow
+    c.shadowColor = '#06b6d4';
+    c.shadowBlur = 15;
+
+    // 2. Draw Octagon Canvas Mat Floor
+    c.beginPath();
+    this.vertices.forEach((v, i) => {
+      if (i === 0) c.moveTo(v.x, v.y);
+      else c.lineTo(v.x, v.y);
+    });
+    c.closePath();
+    
+    // Mat gradient
+    const matGrad = c.createRadialGradient(this.centerX, this.centerY, 10, this.centerX, this.centerY, this.radius);
+    matGrad.addColorStop(0, '#1e293b');
+    matGrad.addColorStop(1, '#0f172a');
+    c.fillStyle = matGrad;
+    c.fill();
+
+    // 3. Octagon Boundary Cage Line
+    c.shadowBlur = 0;
+    c.strokeStyle = '#38bdf8';
+    c.lineWidth = 4;
+    c.stroke();
+
+    // 4. Inner Octagon Line (Safety Zone)
+    c.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI / 4) * i - Math.PI / 8;
+      const vx = this.centerX + Math.cos(angle) * (this.radius * 0.88);
+      const vy = this.centerY + Math.sin(angle) * (this.radius * 0.88);
+      if (i === 0) c.moveTo(vx, vy);
+      else c.lineTo(vx, vy);
+    }
+    c.closePath();
+    c.strokeStyle = 'rgba(234, 179, 8, 0.3)';
+    c.lineWidth = 1.5;
+    c.stroke();
+
+    // 5. Center Circle
+    c.beginPath();
+    c.arc(this.centerX, this.centerY, this.radius * 0.28, 0, Math.PI * 2);
+    c.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+    c.lineWidth = 2;
+    c.stroke();
+
+    // Center Logo Text
+    c.font = '900 12px sans-serif';
+    c.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('MMA GOAT', this.centerX, this.centerY);
+
+    // 6. Cage Posts at Octagon Vertices
+    this.vertices.forEach(v => {
+      c.beginPath();
+      c.arc(v.x, v.y, 5, 0, Math.PI * 2);
+      c.fillStyle = '#64748b';
+      c.fill();
+      c.strokeStyle = '#38bdf8';
+      c.lineWidth = 1.5;
+      c.stroke();
+    });
+
+    c.restore();
+  }
+}
+
+
+/* --- fighterMovementController.js --- */
+// MMA GOAT - Fighter Physics & Movement Vector Controller
+
+class FighterMovementController {
+  constructor(initialX, initialY, isPlayer = true) {
+    this.x = initialX;
+    this.y = initialY;
+    this.vx = 0;
+    this.vy = 0;
+    this.targetX = initialX;
+    this.targetY = initialY;
+    this.angle = isPlayer ? 0 : Math.PI; // Face towards each other
+    this.isPlayer = isPlayer;
+    this.baseSpeed = 2.2;
+    this.radius = 16; // Visual hit circle radius
+    this.circlingAngle = Math.random() * Math.PI * 2;
+
+    // === Animation State ===
+    this.animState = 'idle'; // 'idle','punch_l','punch_r','kick','hit_react','clinch','takedown','block','submission'
+    this.animTimer = 0;       // countdown frames for current anim
+    this.animDuration = 0;    // total frames for current anim
+    this.animData = {};       // extra data per anim (e.g. which hand)
+
+    // Idle breathing cycle
+    this.idlePhase = Math.random() * Math.PI * 2;
+    this.idleSpeed = 0.04 + Math.random() * 0.02;
+
+    // Hit react recoil
+    this.recoilX = 0;
+    this.recoilY = 0;
+  }
+
+  resetPosition(x, y, isPlayer = true) {
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.targetX = x;
+    this.targetY = y;
+    this.angle = isPlayer ? 0 : Math.PI;
+    this.animState = 'idle';
+    this.animTimer = 0;
+    this.recoilX = 0;
+    this.recoilY = 0;
+  }
+
+  setTarget(tx, ty) {
+    this.targetX = tx;
+    this.targetY = ty;
+  }
+
+  // Trigger an animation state
+  playAnimation(state, durationFrames, data = {}) {
+    this.animState = state;
+    this.animDuration = durationFrames;
+    this.animTimer = durationFrames;
+    this.animData = data;
+  }
+
+  // Apply a directional recoil impulse (for getting hit)
+  applyRecoil(fromX, fromY, force = 6) {
+    const dx = this.x - fromX;
+    const dy = this.y - fromY;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    this.recoilX = (dx / dist) * force;
+    this.recoilY = (dy / dist) * force;
+  }
+
+  // Get normalized animation progress (0 = start, 1 = end)
+  getAnimProgress() {
+    if (this.animDuration <= 0) return 1;
+    return 1 - (this.animTimer / this.animDuration);
+  }
+
+  update(arenaManager, dt = 1) {
+    // Velocity vector towards target
+    const dx = this.targetX - this.x;
+    const dy = this.targetY - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 2) {
+      const speed = Math.min(dist * 0.1, this.baseSpeed);
+      this.vx = (dx / dist) * speed;
+      this.vy = (dy / dist) * speed;
+    } else {
+      this.vx *= 0.6;
+      this.vy *= 0.6;
+    }
+
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+
+    // Recoil decay
+    if (Math.abs(this.recoilX) > 0.1 || Math.abs(this.recoilY) > 0.1) {
+      this.x += this.recoilX * dt;
+      this.y += this.recoilY * dt;
+      this.recoilX *= 0.82;
+      this.recoilY *= 0.82;
+    } else {
+      this.recoilX = 0;
+      this.recoilY = 0;
+    }
+
+    // Boundary constraint inside Octagon
+    if (arenaManager) {
+      const clamped = arenaManager.clampToOctagon(this.x, this.y, this.radius + 4);
+      this.x = clamped.x;
+      this.y = clamped.y;
+    }
+
+    // Animation timer countdown
+    if (this.animTimer > 0) {
+      this.animTimer -= dt;
+      if (this.animTimer <= 0) {
+        this.animTimer = 0;
+        this.animState = 'idle';
+        this.animData = {};
+      }
+    }
+
+    // Idle breathing phase
+    this.idlePhase += this.idleSpeed * dt;
+  }
+
+  lookAt(targetX, targetY) {
+    this.angle = Math.atan2(targetY - this.y, targetX - this.x);
+  }
+
+  // Tactical Movement Behaviors
+  approachOpponent(oppX, oppY, minDistance = 35) {
+    const dx = oppX - this.x;
+    const dy = oppY - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > minDistance) {
+      const targetDist = dist - minDistance;
+      const tx = this.x + (dx / dist) * targetDist;
+      const ty = this.y + (dy / dist) * targetDist;
+      this.setTarget(tx, ty);
+    } else {
+      this.setTarget(this.x, this.y);
+    }
+    this.lookAt(oppX, oppY);
+  }
+
+  retreatFromOpponent(oppX, oppY, desiredDistance = 110) {
+    const dx = this.x - oppX;
+    const dy = this.y - oppY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 0 && dist < desiredDistance) {
+      const pushDist = desiredDistance - dist;
+      const tx = this.x + (dx / dist) * pushDist;
+      const ty = this.y + (dy / dist) * pushDist;
+      this.setTarget(tx, ty);
+    }
+    this.lookAt(oppX, oppY);
+  }
+
+  circleAroundOpponent(oppX, oppY, orbitRadius = 75, clockwise = true) {
+    this.circlingAngle += (clockwise ? 0.03 : -0.03);
+    const tx = oppX + Math.cos(this.circlingAngle) * orbitRadius;
+    const ty = oppY + Math.sin(this.circlingAngle) * orbitRadius;
+    this.setTarget(tx, ty);
+    this.lookAt(oppX, oppY);
+  }
+
+  applyImpulse(dirX, dirY, force = 8) {
+    this.x += dirX * force;
+    this.y += dirY * force;
+  }
+}
+
+
+/* --- fighterBehaviorController.js --- */
+// MMA GOAT - Tactical Behavior Controller & AI Steering System
+
+class FighterBehaviorController {
+  constructor(movementController, isPlayer = true) {
+    this.movement = movementController;
+    this.isPlayer = isPlayer;
+    this.currentTactic = 'counter';
+    this.state = 'neutral'; // 'neutral', 'advancing', 'retreating', 'circling', 'striking', 'grappling'
+    this.lastAiDecisionTime = 0;
+    this.aiDirectionClockwise = Math.random() > 0.5;
+  }
+
+  setTactic(tacticId) {
+    this.currentTactic = tacticId || 'counter';
+  }
+
+  // Steering step invoked in each animation tick
+  steer(arenaManager, oppMovement, fightEngineState, now = Date.now()) {
+    if (!this.movement || !oppMovement) return;
+
+    const myPos = { x: this.movement.x, y: this.movement.y };
+    const oppPos = { x: oppMovement.x, y: oppMovement.y };
+
+    const dx = oppPos.x - myPos.x;
+    const dy = oppPos.y - myPos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // AI periodic tactic & steering evaluation (every ~1000ms)
+    if (!this.isPlayer && now - this.lastAiDecisionTime > 1000) {
+      this.lastAiDecisionTime = now;
+      if (Math.random() > 0.6) {
+        this.aiDirectionClockwise = !this.aiDirectionClockwise;
+      }
+    }
+
+    // Execute movement logic per tactic profile
+    switch (this.currentTactic) {
+      case 'counter':
+        // Maintain distance (~85-110px). If opponent comes closer than 60px, retreat & counter.
+        if (dist < 65) {
+          this.movement.retreatFromOpponent(oppPos.x, oppPos.y, 95);
+        } else if (dist > 115) {
+          this.movement.approachOpponent(oppPos.x, oppPos.y, 85);
+        } else {
+          this.movement.circleAroundOpponent(oppPos.x, oppPos.y, 85, this.aiDirectionClockwise);
+        }
+        break;
+
+      case 'pressure':
+        // Constantly walk down opponent, push them towards cage boundary.
+        this.movement.approachOpponent(oppPos.x, oppPos.y, 28);
+        break;
+
+      case 'kicks':
+        // Outer ring circling, maintain kicking range (~70-90px).
+        if (dist < 60) {
+          this.movement.retreatFromOpponent(oppPos.x, oppPos.y, 80);
+        } else if (dist > 100) {
+          this.movement.approachOpponent(oppPos.x, oppPos.y, 75);
+        } else {
+          this.movement.circleAroundOpponent(oppPos.x, oppPos.y, 75, !this.aiDirectionClockwise);
+        }
+        break;
+
+      case 'takedown':
+        // Zigzag approach, close distance fast to shoot double-leg takedown (< 25px).
+        if (dist > 30) {
+          const zigzagOffset = Math.sin(now * 0.005) * 20;
+          const perpX = -dy / (dist || 1);
+          const perpY = dx / (dist || 1);
+          const targetX = oppPos.x - (dx / (dist || 1)) * 25 + perpX * zigzagOffset;
+          const targetY = oppPos.y - (dy / (dist || 1)) * 25 + perpY * zigzagOffset;
+          this.movement.setTarget(targetX, targetY);
+          this.movement.lookAt(oppPos.x, oppPos.y);
+        } else {
+          this.movement.approachOpponent(oppPos.x, oppPos.y, 18);
+        }
+        break;
+
+      case 'clinch':
+        // Drive straight into opponent to lock collar tie (< 22px).
+        this.movement.approachOpponent(oppPos.x, oppPos.y, 18);
+        break;
+
+      case 'submission':
+        // Close distance for ground transition / grapple.
+        this.movement.approachOpponent(oppPos.x, oppPos.y, 22);
+        break;
+
+      case 'defend':
+      default:
+        // Shell up & active retreat towards cage margin, stay away from center.
+        if (dist < 100) {
+          this.movement.retreatFromOpponent(oppPos.x, oppPos.y, 120);
+        } else {
+          this.movement.circleAroundOpponent(arenaManager.centerX, arenaManager.centerY, arenaManager.radius * 0.7, this.aiDirectionClockwise);
+        }
+        break;
+    }
+  }
+}
+
+
+/* --- arenaCollisionManager.js --- */
+// MMA GOAT - Arena Collision & Engagement Range Detector
+
+class ArenaCollisionManager {
+  constructor() {
+    this.strikeRange = 42;
+    this.clinchRange = 26;
+    this.takedownRange = 24;
+    this.lastCollisionTime = 0;
+    this.cooldownMs = 1200; // Cooldown between exchange engagements
+  }
+
+  getDistance(p1, p2) {
+    const dx = p1.x - p2.x;
+    const dy = p1.y - p2.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  isContact(p1, p2, rangeThreshold = 40) {
+    return this.getDistance(p1, p2) <= rangeThreshold;
+  }
+
+  checkEngagement(p1, p2, p1Tactic, p2Tactic, now = Date.now()) {
+    if (now - this.lastCollisionTime < this.cooldownMs) {
+      return null;
+    }
+
+    const dist = this.getDistance(p1, p2);
+    let rangeLimit = this.strikeRange;
+
+    if (p1Tactic === 'clinch' || p2Tactic === 'clinch') {
+      rangeLimit = this.clinchRange;
+    } else if (p1Tactic === 'takedown' || p1Tactic === 'submission' || p2Tactic === 'takedown') {
+      rangeLimit = this.takedownRange;
+    }
+
+    if (dist <= rangeLimit) {
+      this.lastCollisionTime = now;
+      return {
+        type: 'contact',
+        distance: dist,
+        timestamp: now
+      };
+    }
+
+    return null;
+  }
+}
+
+
+/* --- combatAnimationController.js --- */
+// MMA GOAT - Combat Action Visual Animation Controller
+
+class CombatAnimationController {
+  constructor() {
+    this.activeEffects = [];
+    this.groundFightActive = false;
+    this.groundPosition = null;
+  }
+
+  triggerPunchEffect(attacker, defender, isCritical = false) {
+    const dx = defender.x - attacker.x;
+    const dy = defender.y - attacker.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    // === Fighter Body Animations (LONG durations so they're visible) ===
+    const punchType = isCritical ? 'punch_combo' : (Math.random() > 0.5 ? 'punch_l' : 'punch_r');
+    const duration = isCritical ? 50 : 32;
+
+    if (attacker.playAnimation) {
+      attacker.playAnimation(punchType, duration);
+    }
+    if (defender.playAnimation) {
+      defender.playAnimation('hit_react', 28);
+      if (defender.applyRecoil) {
+        defender.applyRecoil(attacker.x, attacker.y, isCritical ? 10 : 5);
+      }
+    }
+
+    // Impact spark
+    const hitX = defender.x - (dx / dist) * 8;
+    const hitY = defender.y - (dy / dist) * 8;
+    this.activeEffects.push({
+      type: 'strike_spark',
+      x: hitX, y: hitY,
+      radius: isCritical ? 30 : 18,
+      color: isCritical ? '#ef4444' : '#eab308',
+      life: 1.0, decay: 0.045
+    });
+
+    // Punch trail line
+    this.activeEffects.push({
+      type: 'punch_trail',
+      x1: attacker.x + (dx / dist) * 16,
+      y1: attacker.y + (dy / dist) * 16,
+      x2: hitX, y2: hitY,
+      color: attacker.isPlayer ? '#38bdf8' : '#f43f5e',
+      life: 1.0, decay: 0.07
+    });
+
+    // Burst particles
+    const pCount = isCritical ? 10 : 5;
+    for (let i = 0; i < pCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.5 + Math.random() * 3.5;
+      this.activeEffects.push({
+        type: 'burst_particle',
+        x: hitX, y: hitY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 1.5 + Math.random() * 2.5,
+        color: isCritical ? '#fbbf24' : '#fde68a',
+        life: 1.0, decay: 0.03 + Math.random() * 0.02
+      });
+    }
+
+    // Critical flash ring
+    if (isCritical) {
+      this.activeEffects.push({
+        type: 'flash_ring',
+        x: hitX, y: hitY,
+        radius: 5, maxRadius: 40,
+        color: '#ffffff',
+        life: 1.0, decay: 0.06
+      });
+    }
+  }
+
+  triggerKickEffect(attacker, defender) {
+    const angle = Math.atan2(defender.y - attacker.y, defender.x - attacker.x);
+    const dx = defender.x - attacker.x;
+    const dy = defender.y - attacker.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    // Fighter body animations
+    if (attacker.playAnimation) {
+      attacker.playAnimation('kick', 40, { side: Math.random() > 0.5 ? 'left' : 'right' });
+    }
+    if (defender.playAnimation) {
+      defender.playAnimation('hit_react', 30);
+      if (defender.applyRecoil) {
+        defender.applyRecoil(attacker.x, attacker.y, 8);
+      }
+    }
+
+    // Kick arc trail
+    this.activeEffects.push({
+      type: 'kick_arc',
+      x: attacker.x, y: attacker.y,
+      angle: angle, radius: 45,
+      color: '#06b6d4',
+      life: 1.0, decay: 0.04
+    });
+
+    // Impact
+    this.activeEffects.push({
+      type: 'strike_spark',
+      x: defender.x, y: defender.y,
+      radius: 24, color: '#f97316',
+      life: 1.0, decay: 0.05
+    });
+
+    // Burst particles
+    for (let i = 0; i < 7; i++) {
+      const a = angle + (Math.random() - 0.5) * 1.5;
+      const speed = 2 + Math.random() * 3;
+      this.activeEffects.push({
+        type: 'burst_particle',
+        x: defender.x - (dx / dist) * 5,
+        y: defender.y - (dy / dist) * 5,
+        vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+        radius: 2 + Math.random() * 2,
+        color: '#fb923c',
+        life: 1.0, decay: 0.03 + Math.random() * 0.02
+      });
+    }
+  }
+
+  triggerTakedownEffect(attacker, defender) {
+    this.groundFightActive = true;
+    this.groundPosition = 'mount';
+
+    if (attacker.playAnimation) {
+      attacker.playAnimation('takedown', 55);
+    }
+    if (defender.playAnimation) {
+      defender.playAnimation('hit_react', 45);
+      if (defender.applyRecoil) {
+        defender.applyRecoil(attacker.x, attacker.y, -6);
+      }
+    }
+
+    const mx = (attacker.x + defender.x) / 2;
+    const my = (attacker.y + defender.y) / 2;
+
+    this.activeEffects.push({
+      type: 'takedown_ring',
+      x: mx, y: my,
+      radius: 6, maxRadius: 55,
+      color: '#a855f7',
+      life: 1.0, decay: 0.025
+    });
+
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const speed = 1 + Math.random() * 2.5;
+      this.activeEffects.push({
+        type: 'burst_particle',
+        x: mx, y: my,
+        vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+        radius: 2 + Math.random() * 3,
+        color: '#c084fc',
+        life: 1.0, decay: 0.025
+      });
+    }
+  }
+
+  triggerClinchEffect(p1, p2) {
+    if (p1.playAnimation) p1.playAnimation('clinch', 50);
+    if (p2.playAnimation) p2.playAnimation('clinch', 50);
+
+    const mx = (p1.x + p2.x) / 2;
+    const my = (p1.y + p2.y) / 2;
+
+    this.activeEffects.push({
+      type: 'clinch_spark',
+      x: mx, y: my,
+      radius: 26, color: '#f97316',
+      life: 1.0, decay: 0.03
+    });
+
+    this.activeEffects.push({
+      type: 'flash_ring',
+      x: mx, y: my,
+      radius: 4, maxRadius: 32,
+      color: '#f97316',
+      life: 1.0, decay: 0.045
+    });
+  }
+
+  triggerSubmissionEffect(attacker, defender) {
+    if (attacker.playAnimation) attacker.playAnimation('submission', 60);
+    if (defender.playAnimation) defender.playAnimation('submission', 60);
+
+    this.activeEffects.push({
+      type: 'submission_lock',
+      x: defender.x, y: defender.y,
+      radius: 32, color: '#ec4899',
+      life: 1.0, decay: 0.02
+    });
+
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI * 2 / 6) * i;
+      this.activeEffects.push({
+        type: 'orbit_particle',
+        cx: defender.x, cy: defender.y,
+        angle: a, orbitRadius: 22,
+        angularSpeed: 0.1,
+        radius: 2.5, color: '#ec4899',
+        life: 1.0, decay: 0.018
+      });
+    }
+  }
+
+  triggerBlockEffect(defender) {
+    if (defender.playAnimation) {
+      defender.playAnimation('block', 25);
+    }
+    this.activeEffects.push({
+      type: 'strike_spark',
+      x: defender.x + (defender.isPlayer ? 12 : -12),
+      y: defender.y - 8,
+      radius: 12, color: '#94a3b8',
+      life: 1.0, decay: 0.07
+    });
+  }
+
+  resetGroundState() {
+    this.groundFightActive = false;
+    this.groundPosition = null;
+  }
+
+  updateAndDraw(ctx) {
+    if (!ctx) return;
+
+    ctx.save();
+    for (let i = this.activeEffects.length - 1; i >= 0; i--) {
+      const fx = this.activeEffects[i];
+      fx.life -= fx.decay;
+
+      if (fx.life <= 0) {
+        this.activeEffects.splice(i, 1);
+        continue;
+      }
+
+      ctx.globalAlpha = Math.max(0, fx.life);
+
+      if (fx.type === 'strike_spark') {
+        const sparkR = fx.radius * (1.3 - fx.life * 0.3);
+        const gradient = ctx.createRadialGradient(fx.x, fx.y, 0, fx.x, fx.y, sparkR);
+        gradient.addColorStop(0, fx.color);
+        gradient.addColorStop(0.5, fx.color);
+        gradient.addColorStop(1, 'transparent');
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, sparkR, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+      } else if (fx.type === 'punch_trail') {
+        ctx.beginPath();
+        ctx.moveTo(fx.x1, fx.y1);
+        ctx.lineTo(fx.x2, fx.y2);
+        ctx.strokeStyle = fx.color;
+        ctx.lineWidth = 5 * fx.life;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+      } else if (fx.type === 'kick_arc') {
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, fx.radius, fx.angle - 0.8, fx.angle + 0.8);
+        ctx.strokeStyle = fx.color;
+        ctx.lineWidth = 6 * fx.life;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+      } else if (fx.type === 'takedown_ring' || fx.type === 'flash_ring') {
+        fx.radius += (fx.maxRadius - fx.radius) * 0.12;
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = fx.color;
+        ctx.lineWidth = fx.type === 'flash_ring' ? 2.5 : 3.5;
+        ctx.stroke();
+
+      } else if (fx.type === 'clinch_spark' || fx.type === 'submission_lock') {
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, fx.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = fx.color;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const rot = (1 - fx.life) * Math.PI * 4;
+        ctx.save();
+        ctx.translate(fx.x, fx.y);
+        ctx.rotate(rot);
+        ctx.beginPath();
+        ctx.arc(0, 0, fx.radius * 0.55, 0, Math.PI * 2);
+        ctx.strokeStyle = fx.color;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 6]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+      } else if (fx.type === 'burst_particle') {
+        fx.x += fx.vx;
+        fx.y += fx.vy;
+        fx.vx *= 0.94;
+        fx.vy *= 0.94;
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, fx.radius * fx.life, 0, Math.PI * 2);
+        ctx.fillStyle = fx.color;
+        ctx.fill();
+
+      } else if (fx.type === 'orbit_particle') {
+        fx.angle += fx.angularSpeed;
+        const px = fx.cx + Math.cos(fx.angle) * fx.orbitRadius;
+        const py = fx.cy + Math.sin(fx.angle) * fx.orbitRadius;
+        ctx.beginPath();
+        ctx.arc(px, py, fx.radius, 0, Math.PI * 2);
+        ctx.fillStyle = fx.color;
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+}
+
+
+/* --- visualFightRenderer.js --- */
+// MMA GOAT - 60 FPS Canvas Visual Fighter Renderer with Fight Animations
+
+class VisualFightRenderer {
+  constructor(canvas, arenaManager, animController) {
+    this.canvas = canvas;
+    this.ctx = canvas ? canvas.getContext('2d') : null;
+    this.arena = arenaManager;
+    this.anim = animController;
+    this.frameCount = 0;
+  }
+
+  render(playerMove, oppMove, playerState, oppState, isFightActive = true) {
+    if (!this.ctx || !this.arena) return;
+    this.frameCount++;
+
+    // 1. Draw Arena Octagon
+    this.arena.draw(this.ctx);
+
+    const c = this.ctx;
+
+    // 2. Draw Fighter Characters with Animations
+    if (playerMove) {
+      this.drawAnimatedFighter(c, playerMove, playerState, true);
+    }
+    if (oppMove) {
+      this.drawAnimatedFighter(c, oppMove, oppState, false);
+    }
+
+    // 3. Draw Clinch/Takedown connector lines between fighters
+    if (playerMove && oppMove) {
+      this.drawEngagementLink(c, playerMove, oppMove);
+    }
+
+    // 4. Render Active Particle Animations & Effects
+    if (this.anim) {
+      this.anim.updateAndDraw(c);
+    }
+  }
+
+  drawAnimatedFighter(ctx, move, state, isPlayer) {
+    ctx.save();
+
+    const px = move.x;
+    const py = move.y;
+    ctx.translate(px, py);
+
+    const mainColor = isPlayer ? '#06b6d4' : '#ef4444';
+    const skinColor = isPlayer ? '#f0d0a0' : '#d4a574';
+    const shortsColor = isPlayer ? '#1e40af' : '#991b1b';
+    const gloveColor = '#eab308';
+    const accentColor = isPlayer ? '#38bdf8' : '#f87171';
+    const radius = move.radius || 16;
+    const animState = move.animState || 'idle';
+    const animProgress = move.getAnimProgress ? move.getAnimProgress() : 1;
+    const idlePhase = move.idlePhase || 0;
+    const facing = move.angle || 0;
+
+    // === Hit React Shake ===
+    let shakeX = 0, shakeY = 0;
+    if (animState === 'hit_react') {
+      const intensity = (1 - animProgress) * 6;
+      shakeX = Math.sin(animProgress * 30) * intensity;
+      shakeY = Math.cos(animProgress * 25) * intensity * 0.5;
+    }
+
+    ctx.translate(shakeX, shakeY);
+
+    // === Idle Breathing Bob ===
+    let bodyBob = 0;
+    if (animState === 'idle') {
+      bodyBob = Math.sin(idlePhase) * 2.5;
+    }
+
+    // === Shadow on Ground ===
+    ctx.beginPath();
+    ctx.ellipse(0, radius + 8 + bodyBob * 0.3, radius * 1.3, 5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fill();
+
+    // Determine facing direction multiplier (left=-1, right=1)
+    const facingRight = Math.cos(facing) >= 0 ? 1 : -1;
+
+    // Scale X based on facing direction
+    ctx.scale(facingRight, 1);
+
+    // === LEGS ===
+    this.drawLegs(ctx, move, radius, skinColor, shortsColor, animState, animProgress, idlePhase, bodyBob);
+
+    // === BODY / TORSO ===
+    this.drawTorso(ctx, move, radius, mainColor, skinColor, animState, animProgress, bodyBob);
+
+    // === HEAD ===
+    this.drawHead(ctx, move, radius, skinColor, mainColor, animState, animProgress, bodyBob);
+
+    // === ARMS & GLOVES ===
+    this.drawArms(ctx, move, radius, gloveColor, skinColor, accentColor, animState, animProgress, bodyBob, idlePhase);
+
+    // Undo facing scale
+    ctx.scale(facingRight, 1);
+
+    // === Mini HP / Stamina bar ===
+    if (state) {
+      this.drawHealthBar(ctx, state, radius);
+    }
+
+    // === Fighter Label ===
+    this.drawNameTag(ctx, isPlayer, radius);
+
+    // === Hit flash overlay ===
+    if (animState === 'hit_react' && animProgress < 0.3) {
+      ctx.beginPath();
+      ctx.arc(0, bodyBob - 2, radius * 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.4 * (1 - animProgress / 0.3)) + ')';
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  drawHead(ctx, move, radius, skinColor, mainColor, animState, animProgress, bodyBob) {
+    const headX = 0;
+    let headY = -radius * 1.5 + bodyBob;
+    const headR = radius * 0.42;
+
+    // Head duck during block
+    if (animState === 'block') {
+      headY += 5 * (1 - animProgress);
+    }
+    // Head lean back during hit react
+    if (animState === 'hit_react') {
+      headY -= 3 * (1 - animProgress);
+    }
+
+    // Head circle
+    ctx.beginPath();
+    ctx.arc(headX, headY, headR, 0, Math.PI * 2);
+    ctx.fillStyle = skinColor;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = mainColor;
+    ctx.stroke();
+
+    // Hair / headband
+    ctx.beginPath();
+    ctx.arc(headX, headY - headR * 0.3, headR * 0.95, -Math.PI, 0);
+    ctx.fillStyle = mainColor;
+    ctx.fill();
+  }
+
+  drawTorso(ctx, move, radius, mainColor, skinColor, animState, animProgress, bodyBob) {
+    const torsoW = radius * 0.7;
+    const torsoH = radius * 1.0;
+    const torsoY = -radius * 0.5 + bodyBob;
+
+    // Torso lean on attacks
+    let torsoLean = 0;
+    if (animState === 'punch_r' || animState === 'punch_combo') {
+      torsoLean = 3 * Math.sin(animProgress * Math.PI);
+    }
+    if (animState === 'kick') {
+      torsoLean = -4 * Math.sin(animProgress * Math.PI);
+    }
+
+    ctx.save();
+    ctx.translate(torsoLean, 0);
+
+    // Main torso (trapezoid shape)
+    ctx.beginPath();
+    ctx.moveTo(-torsoW * 0.8, torsoY - torsoH * 0.4);  // left shoulder
+    ctx.lineTo(torsoW * 0.8, torsoY - torsoH * 0.4);   // right shoulder
+    ctx.lineTo(torsoW * 0.6, torsoY + torsoH * 0.6);    // right hip
+    ctx.lineTo(-torsoW * 0.6, torsoY + torsoH * 0.6);   // left hip
+    ctx.closePath();
+    ctx.fillStyle = mainColor;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  drawArms(ctx, move, radius, gloveColor, skinColor, accentColor, animState, animProgress, bodyBob, idlePhase) {
+    const shoulderY = -radius * 0.9 + bodyBob;
+    const shoulderX = radius * 0.55;
+    const armLen = radius * 0.7;
+    const forearmLen = radius * 0.65;
+    const gloveR = radius * 0.32;
+
+    // Default guard position
+    let leftElbowX = -shoulderX - 2;
+    let leftElbowY = shoulderY + armLen * 0.7;
+    let leftGloveX = -shoulderX + 4;
+    let leftGloveY = shoulderY + armLen * 0.15;
+
+    let rightElbowX = shoulderX + 2;
+    let rightElbowY = shoulderY + armLen * 0.7;
+    let rightGloveX = shoulderX - 4;
+    let rightGloveY = shoulderY + armLen * 0.15;
+
+    // === IDLE GUARD STANCE ===
+    if (animState === 'idle') {
+      // Subtle guard bob
+      const bob = Math.sin(idlePhase * 1.3) * 2;
+      const bob2 = Math.cos(idlePhase * 1.1) * 2;
+      leftGloveX = -shoulderX + 6 + bob * 0.5;
+      leftGloveY = shoulderY - 2 + bob;
+      rightGloveX = shoulderX - 6 + bob2 * 0.5;
+      rightGloveY = shoulderY + 2 + bob2;
+      leftElbowX = -shoulderX - 3;
+      leftElbowY = shoulderY + armLen * 0.5 + bob * 0.3;
+      rightElbowX = shoulderX + 3;
+      rightElbowY = shoulderY + armLen * 0.5 + bob2 * 0.3;
+    }
+
+    // === LEFT JAB ===
+    if (animState === 'punch_l') {
+      const t = animProgress;
+      // Quick snap out and back
+      const extend = t < 0.3 ? (t / 0.3) : (t < 0.5 ? 1 : 1 - ((t - 0.5) / 0.5));
+      leftGloveX = -shoulderX + 6 + extend * (radius * 1.8);
+      leftGloveY = shoulderY - 4;
+      leftElbowX = -shoulderX + extend * radius * 0.6;
+      leftElbowY = shoulderY + armLen * 0.3;
+    }
+
+    // === RIGHT CROSS ===
+    if (animState === 'punch_r') {
+      const t = animProgress;
+      const windUp = t < 0.2 ? (t / 0.2) : 0;
+      const extend = t < 0.2 ? 0 : (t < 0.45 ? ((t - 0.2) / 0.25) : 1 - ((t - 0.45) / 0.55));
+      rightGloveX = shoulderX - 6 - windUp * 8 + extend * (radius * 2.0);
+      rightGloveY = shoulderY - 2;
+      rightElbowX = shoulderX + extend * radius * 0.8;
+      rightElbowY = shoulderY + armLen * 0.2;
+    }
+
+    // === 1-2 COMBO ===
+    if (animState === 'punch_combo') {
+      const t = animProgress;
+      if (t < 0.45) {
+        // Jab phase
+        const phase = t / 0.45;
+        const ext = phase < 0.4 ? (phase / 0.4) : 1 - ((phase - 0.4) / 0.6);
+        leftGloveX = -shoulderX + 6 + ext * radius * 1.8;
+        leftGloveY = shoulderY - 4;
+        leftElbowX = -shoulderX + ext * radius * 0.5;
+      } else {
+        // Cross phase
+        const phase = (t - 0.45) / 0.55;
+        const ext = phase < 0.4 ? (phase / 0.4) : 1 - ((phase - 0.4) / 0.6);
+        rightGloveX = shoulderX - 4 + ext * radius * 2.0;
+        rightGloveY = shoulderY - 2;
+        rightElbowX = shoulderX + ext * radius * 0.7;
+      }
+    }
+
+    // === BLOCK ===
+    if (animState === 'block') {
+      const guard = 1 - animProgress * 0.7;
+      leftGloveX = -shoulderX + 3;
+      leftGloveY = shoulderY - 8 * guard;
+      rightGloveX = shoulderX - 3;
+      rightGloveY = shoulderY - 6 * guard;
+      leftElbowX = -shoulderX - 5;
+      leftElbowY = shoulderY + 4;
+      rightElbowX = shoulderX + 5;
+      rightElbowY = shoulderY + 4;
+    }
+
+    // === CLINCH ===
+    if (animState === 'clinch') {
+      const reach = animProgress < 0.3 ? (animProgress / 0.3) : 1;
+      leftGloveX = -shoulderX + 8 + reach * radius * 1.4;
+      leftGloveY = shoulderY - 6;
+      rightGloveX = shoulderX - 8 + reach * radius * 1.4;
+      rightGloveY = shoulderY + 2;
+      leftElbowX = -shoulderX + reach * radius * 0.5;
+      leftElbowY = shoulderY + 6;
+      rightElbowX = shoulderX + reach * radius * 0.5;
+      rightElbowY = shoulderY + 8;
+    }
+
+    // === TAKEDOWN ===
+    if (animState === 'takedown') {
+      const t = animProgress;
+      const lunge = t < 0.35 ? (t / 0.35) : 1;
+      leftGloveX = -shoulderX + 4 + lunge * radius * 1.2;
+      leftGloveY = shoulderY + armLen * 0.5 + lunge * 8;
+      rightGloveX = shoulderX - 4 + lunge * radius * 1.2;
+      rightGloveY = shoulderY + armLen * 0.5 + lunge * 8;
+      leftElbowX = -shoulderX + lunge * radius * 0.4;
+      leftElbowY = shoulderY + armLen * 0.7;
+      rightElbowX = shoulderX + lunge * radius * 0.4;
+      rightElbowY = shoulderY + armLen * 0.7;
+    }
+
+    // === KICK (arms pull back for balance) ===
+    if (animState === 'kick') {
+      const ext = Math.sin(animProgress * Math.PI);
+      leftGloveX = -shoulderX - ext * 6;
+      leftGloveY = shoulderY + ext * 4;
+      rightGloveX = shoulderX - ext * 4;
+      rightGloveY = shoulderY - ext * 2;
+    }
+
+    // === SUBMISSION ===
+    if (animState === 'submission') {
+      const wrap = Math.sin(animProgress * Math.PI);
+      leftGloveX = -shoulderX + 10 + wrap * radius * 1.3;
+      leftGloveY = shoulderY + wrap * 4;
+      rightGloveX = shoulderX - 10 + wrap * radius * 1.3;
+      rightGloveY = shoulderY - wrap * 4;
+    }
+
+    // === HIT REACT (arms fly back) ===
+    if (animState === 'hit_react') {
+      const fling = (1 - animProgress);
+      leftGloveX = -shoulderX - fling * 10;
+      leftGloveY = shoulderY - 5 + fling * 8;
+      rightGloveX = shoulderX + fling * 6;
+      rightGloveY = shoulderY + fling * 10;
+    }
+
+    // --- Draw LEFT arm ---
+    // Upper arm
+    ctx.beginPath();
+    ctx.moveTo(-shoulderX, shoulderY);
+    ctx.lineTo(leftElbowX, leftElbowY);
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    // Forearm
+    ctx.beginPath();
+    ctx.moveTo(leftElbowX, leftElbowY);
+    ctx.lineTo(leftGloveX, leftGloveY);
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // Glove
+    ctx.beginPath();
+    ctx.arc(leftGloveX, leftGloveY, gloveR, 0, Math.PI * 2);
+    ctx.fillStyle = gloveColor;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#b45309';
+    ctx.stroke();
+
+    // --- Draw RIGHT arm ---
+    ctx.beginPath();
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.lineTo(rightElbowX, rightElbowY);
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(rightElbowX, rightElbowY);
+    ctx.lineTo(rightGloveX, rightGloveY);
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(rightGloveX, rightGloveY, gloveR, 0, Math.PI * 2);
+    ctx.fillStyle = gloveColor;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#b45309';
+    ctx.stroke();
+  }
+
+  drawLegs(ctx, move, radius, skinColor, shortsColor, animState, animProgress, idlePhase, bodyBob) {
+    const hipY = radius * 0.1 + bodyBob;
+    const thighLen = radius * 0.65;
+    const shinLen = radius * 0.6;
+    const hipSpread = radius * 0.35;
+
+    // Default stance
+    let leftKneeX = -hipSpread - 2;
+    let leftKneeY = hipY + thighLen;
+    let leftFootX = -hipSpread - 4;
+    let leftFootY = hipY + thighLen + shinLen;
+
+    let rightKneeX = hipSpread + 2;
+    let rightKneeY = hipY + thighLen;
+    let rightFootX = hipSpread + 4;
+    let rightFootY = hipY + thighLen + shinLen;
+
+    // === IDLE STANCE ===
+    if (animState === 'idle') {
+      const shift = Math.sin(idlePhase * 0.8) * 2;
+      leftKneeX += shift * 0.5;
+      rightKneeX -= shift * 0.5;
+      leftFootX += shift;
+      rightFootX -= shift;
+    }
+
+    // === KICK ===
+    if (animState === 'kick') {
+      const side = (move.animData && move.animData.side === 'left') ? -1 : 1;
+      const t = animProgress;
+      const chamber = t < 0.25 ? (t / 0.25) : 1;
+      const extend = t < 0.25 ? 0 : (t < 0.55 ? ((t - 0.25) / 0.3) : 1 - ((t - 0.55) / 0.45));
+
+      if (side === 1) {
+        // Right leg kick
+        rightKneeY = hipY + thighLen * (1 - chamber * 0.4);
+        rightKneeX = hipSpread + chamber * 6;
+        rightFootX = hipSpread + 4 + extend * radius * 2.2;
+        rightFootY = hipY + thighLen * (1 - extend * 0.5);
+      } else {
+        leftKneeY = hipY + thighLen * (1 - chamber * 0.4);
+        leftKneeX = -hipSpread - chamber * 6;
+        leftFootX = -hipSpread - 4 + extend * radius * 2.2;
+        leftFootY = hipY + thighLen * (1 - extend * 0.5);
+      }
+    }
+
+    // === TAKEDOWN (lunge forward) ===
+    if (animState === 'takedown') {
+      const t = animProgress;
+      const lunge = t < 0.4 ? (t / 0.4) : 1;
+      rightFootX = hipSpread + 4 + lunge * radius * 1.2;
+      rightKneeX = hipSpread + 2 + lunge * radius * 0.5;
+      leftFootX = -hipSpread - 4 - lunge * 4;
+      rightFootY += lunge * 4;
+    }
+
+    // === HIT REACT ===
+    if (animState === 'hit_react') {
+      const stumble = (1 - animProgress);
+      leftFootX -= stumble * 6;
+      rightFootX += stumble * 4;
+    }
+
+    // --- Draw shorts/trunks area ---
+    ctx.beginPath();
+    ctx.moveTo(-hipSpread, hipY);
+    ctx.lineTo(hipSpread, hipY);
+    ctx.lineTo(hipSpread + 2, hipY + thighLen * 0.35);
+    ctx.lineTo(-hipSpread - 2, hipY + thighLen * 0.35);
+    ctx.closePath();
+    ctx.fillStyle = shortsColor;
+    ctx.fill();
+
+    // --- Draw LEFT leg ---
+    ctx.beginPath();
+    ctx.moveTo(-hipSpread, hipY + thighLen * 0.2);
+    ctx.lineTo(leftKneeX, leftKneeY);
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(leftKneeX, leftKneeY);
+    ctx.lineTo(leftFootX, leftFootY);
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    // Foot
+    ctx.beginPath();
+    ctx.ellipse(leftFootX, leftFootY, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = skinColor;
+    ctx.fill();
+
+    // --- Draw RIGHT leg ---
+    ctx.beginPath();
+    ctx.moveTo(hipSpread, hipY + thighLen * 0.2);
+    ctx.lineTo(rightKneeX, rightKneeY);
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(rightKneeX, rightKneeY);
+    ctx.lineTo(rightFootX, rightFootY);
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(rightFootX, rightFootY, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = skinColor;
+    ctx.fill();
+  }
+
+  drawHealthBar(ctx, state, radius) {
+    const barWidth = 38;
+    const barHeight = 5;
+    const startX = -barWidth / 2;
+    const startY = -radius * 2.2;
+
+    // HP Bar background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(startX - 1, startY - 1, barWidth + 2, barHeight + 2);
+
+    const headHp = Math.max(0, Math.min(100, state.headHp !== undefined ? state.headHp : 100));
+    const hpColor = headHp > 50 ? '#10b981' : (headHp > 25 ? '#eab308' : '#ef4444');
+    ctx.fillStyle = hpColor;
+    ctx.fillRect(startX, startY, (headHp / 100) * barWidth, barHeight);
+
+    // Stamina bar
+    if (state.stamina !== undefined) {
+      const stamY = startY + barHeight + 2;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(startX - 1, stamY, barWidth + 2, 3);
+      const stamina = Math.max(0, Math.min(100, state.stamina));
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(startX, stamY, (stamina / 100) * barWidth, 2);
+    }
+  }
+
+  drawNameTag(ctx, isPlayer, radius) {
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillStyle = isPlayer ? 'rgba(6, 182, 212, 0.95)' : 'rgba(239, 68, 68, 0.95)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(isPlayer ? '🔵 SEN' : '🔴 RAKİP', 0, radius + 14);
+  }
+
+  drawEngagementLink(ctx, playerMove, oppMove) {
+    const p = playerMove;
+    const o = oppMove;
+    const bothClinch = p.animState === 'clinch' || o.animState === 'clinch';
+    const bothTakedown = p.animState === 'takedown' || o.animState === 'takedown';
+    const bothSub = p.animState === 'submission' || o.animState === 'submission';
+
+    if (!bothClinch && !bothTakedown && !bothSub) return;
+
+    const dx = o.x - p.x;
+    const dy = o.y - p.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 90) return;
+
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+
+    if (bothTakedown) {
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 4]);
+    } else if (bothSub) {
+      ctx.strokeStyle = '#ec4899';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+    } else {
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([5, 3]);
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(o.x, o.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const mx = (p.x + o.x) / 2;
+    const my = (p.y + o.y) / 2;
+    ctx.beginPath();
+    ctx.arc(mx, my, 10, 0, Math.PI * 2);
+    ctx.strokeStyle = bothTakedown ? '#a855f7' : (bothSub ? '#ec4899' : '#f97316');
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+
+/* --- roundSimulationController.js --- */
+// MMA GOAT - Live Round Simulation Controller & Octagon Loop Orchestrator
+
+
+
+
+
+
+
+
+class RoundSimulationController {
+  constructor(canvasElement) {
+    this.canvas = canvasElement;
+    this.arena = new ArenaManager(canvasElement);
+    this.anim = new CombatAnimationController();
+    this.renderer = new VisualFightRenderer(canvasElement, this.arena, this.anim);
+    this.collision = new ArenaCollisionManager();
+
+    this.playerMove = new FighterMovementController(this.arena.centerX - 100, this.arena.centerY, true);
+    this.oppMove = new FighterMovementController(this.arena.centerX + 100, this.arena.centerY, false);
+
+    this.playerBehavior = new FighterBehaviorController(this.playerMove, true);
+    this.oppBehavior = new FighterBehaviorController(this.oppMove, false);
+
+    this.isRunning = false;
+    this.animFrameId = null;
+    this.currentFightEngine = null;
+    this.exchangesRemainingInRound = 0;
+    this.lastExchangeTime = 0;
+    this.onRoundFinishedCallback = null;
+
+    // Ambient combat timing
+    this.lastAmbientTime = 0;
+    this.nextAmbientDelay = 800;
+  }
+
+  initArena(fightEngine) {
+    this.currentFightEngine = fightEngine;
+    if (this.canvas) {
+      const parentW = (this.canvas.parentElement && this.canvas.parentElement.clientWidth > 100)
+        ? this.canvas.parentElement.clientWidth
+        : 580;
+      const containerWidth = Math.min(600, parentW);
+      const canvasHeight = Math.round(containerWidth * 0.62);
+      this.arena.resize(containerWidth, canvasHeight);
+    }
+
+    this.playerMove.resetPosition(this.arena.centerX - 95, this.arena.centerY, true);
+    this.oppMove.resetPosition(this.arena.centerX + 95, this.arena.centerY, false);
+
+    this.playerBehavior.setTactic('counter');
+    this.oppBehavior.setTactic('counter');
+
+    this.anim.resetGroundState();
+    this.startLoop();
+  }
+
+  startLoop() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    let lastTime = performance.now();
+
+    const loop = (now) => {
+      if (!this.isRunning) return;
+      const dt = Math.min((now - lastTime) / 16.6, 2.0);
+      lastTime = now;
+
+      this.update(dt, now);
+      this.render();
+
+      this.animFrameId = requestAnimationFrame(loop);
+    };
+
+    this.animFrameId = requestAnimationFrame(loop);
+  }
+
+  stopLoop() {
+    this.isRunning = false;
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
+  }
+
+  update(dt, now) {
+    if (!this.currentFightEngine) return;
+
+    // Dynamic canvas resize
+    if (this.canvas && this.canvas.parentElement) {
+      const pW = this.canvas.parentElement.clientWidth;
+      if (pW > 100 && (this.canvas.width < 100 || Math.abs(this.canvas.width - pW) > 20)) {
+        const targetW = Math.min(600, pW);
+        this.arena.resize(targetW, Math.round(targetW * 0.62));
+        this.playerMove.resetPosition(this.arena.centerX - 95, this.arena.centerY, true);
+        this.oppMove.resetPosition(this.arena.centerX + 95, this.arena.centerY, false);
+      }
+    }
+
+    const pState = this.currentFightEngine.state.player;
+    const oppState = this.currentFightEngine.state.opponent;
+
+    // Steering & movement
+    this.playerBehavior.steer(this.arena, this.oppMove, pState, now);
+    this.oppBehavior.steer(this.arena, this.playerMove, oppState, now);
+
+    this.playerMove.update(this.arena, dt);
+    this.oppMove.update(this.arena, dt);
+
+    // Engine exchanges
+    if (this.exchangesRemainingInRound > 0 && now - this.lastExchangeTime > 1200) {
+      this.lastExchangeTime = now;
+      this.executeNextExchangeInRound();
+    }
+
+    // === Ambient visual combat (always active, not just during rounds) ===
+    if (now - this.lastAmbientTime > this.nextAmbientDelay) {
+      this.lastAmbientTime = now;
+      this.triggerAmbientCombat(now);
+    }
+  }
+
+  render() {
+    const pState = this.currentFightEngine ? this.currentFightEngine.state.player : null;
+    const oppState = this.currentFightEngine ? this.currentFightEngine.state.opponent : null;
+    this.renderer.render(this.playerMove, this.oppMove, pState, oppState, this.isRunning);
+  }
+
+  // === Ambient visual-only combat (no engine damage) - fires constantly ===
+  triggerAmbientCombat(now) {
+    const dx = this.oppMove.x - this.playerMove.x;
+    const dy = this.oppMove.y - this.playerMove.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Set next delay (random, frequent)
+    this.nextAmbientDelay = 500 + Math.random() * 1200;
+
+    // Only fire when fighters are close enough
+    if (dist > 120) {
+      // When far apart, just do guard stance adjustments
+      if (this.playerMove.animState === 'idle' && Math.random() > 0.6) {
+        this.playerMove.playAnimation('block', 20);
+      }
+      if (this.oppMove.animState === 'idle' && Math.random() > 0.6) {
+        this.oppMove.playAnimation('block', 20);
+      }
+      return;
+    }
+
+    // Skip if either fighter is already animating a big move
+    const pBusy = this.playerMove.animState !== 'idle' && this.playerMove.animState !== 'block';
+    const oBusy = this.oppMove.animState !== 'idle' && this.oppMove.animState !== 'block';
+    if (pBusy && oBusy) return;
+
+    const roll = Math.random();
+    const tactic = this.playerBehavior.currentTactic;
+    const aiTactic = this.oppBehavior.currentTactic;
+
+    // Determine who attacks (player slightly more often)
+    const attackerIsPlayer = Math.random() > 0.4;
+    const attacker = attackerIsPlayer ? this.playerMove : this.oppMove;
+    const defender = attackerIsPlayer ? this.oppMove : this.playerMove;
+    const attackTactic = attackerIsPlayer ? tactic : aiTactic;
+
+    if (attacker.animState !== 'idle') return;
+
+    if (roll < 0.25) {
+      // === Quick jab ===
+      attacker.playAnimation(Math.random() > 0.5 ? 'punch_l' : 'punch_r', 28);
+      // Defender sometimes blocks
+      if (defender.animState === 'idle' && Math.random() > 0.4) {
+        defender.playAnimation('block', 22);
+      } else if (defender.animState === 'idle' && Math.random() > 0.6) {
+        defender.playAnimation('hit_react', 18);
+        if (defender.applyRecoil) defender.applyRecoil(attacker.x, attacker.y, 2);
+        // Small spark
+        this.anim.activeEffects.push({
+          type: 'strike_spark',
+          x: defender.x, y: defender.y - 5,
+          radius: 10, color: '#fde68a',
+          life: 1.0, decay: 0.08
+        });
+      }
+
+    } else if (roll < 0.4) {
+      // === 1-2 Combo ===
+      attacker.playAnimation('punch_combo', 42);
+      if (defender.animState === 'idle') {
+        if (Math.random() > 0.5) {
+          defender.playAnimation('block', 30);
+        } else {
+          defender.playAnimation('hit_react', 24);
+          if (defender.applyRecoil) defender.applyRecoil(attacker.x, attacker.y, 4);
+          this.anim.activeEffects.push({
+            type: 'strike_spark',
+            x: defender.x, y: defender.y - 3,
+            radius: 14, color: '#eab308',
+            life: 1.0, decay: 0.06
+          });
+        }
+      }
+
+    } else if (roll < 0.55 && dist < 90) {
+      // === Kick ===
+      attacker.playAnimation('kick', 35, { side: Math.random() > 0.5 ? 'left' : 'right' });
+      if (defender.animState === 'idle') {
+        if (Math.random() > 0.45) {
+          defender.playAnimation('hit_react', 22);
+          if (defender.applyRecoil) defender.applyRecoil(attacker.x, attacker.y, 5);
+          this.anim.activeEffects.push({
+            type: 'strike_spark',
+            x: defender.x, y: defender.y,
+            radius: 16, color: '#f97316',
+            life: 1.0, decay: 0.06
+          });
+        } else {
+          defender.playAnimation('block', 25);
+        }
+      }
+
+    } else if (roll < 0.65) {
+      // === Both exchange (simultaneous) ===
+      attacker.playAnimation('punch_l', 24);
+      if (defender.animState === 'idle') {
+        defender.playAnimation(Math.random() > 0.5 ? 'punch_r' : 'punch_l', 24);
+      }
+      // Small sparks at midpoint
+      const mx = (attacker.x + defender.x) / 2;
+      const my = (attacker.y + defender.y) / 2;
+      this.anim.activeEffects.push({
+        type: 'strike_spark',
+        x: mx, y: my,
+        radius: 8, color: '#fbbf24',
+        life: 1.0, decay: 0.1
+      });
+
+    } else if (roll < 0.75) {
+      // === Feint (just the animation, no contact) ===
+      attacker.playAnimation(Math.random() > 0.5 ? 'punch_l' : 'kick', 
+        Math.random() > 0.5 ? 20 : 30,
+        { side: 'right' });
+
+    } else if (roll < 0.85) {
+      // === Guard adjustment / head movement ===
+      if (attacker.animState === 'idle') attacker.playAnimation('block', 18);
+      if (defender.animState === 'idle' && Math.random() > 0.5) defender.playAnimation('block', 18);
+
+    } else {
+      // === Body shot jab ===
+      attacker.playAnimation('punch_r', 26);
+      if (defender.animState === 'idle' && Math.random() > 0.3) {
+        defender.playAnimation('block', 20);
+      }
+    }
+  }
+
+  // Triggered when Player selects a tactic button
+  startRoundSimulation(playerTacticId, onRoundFinished) {
+    if (!this.currentFightEngine || this.currentFightEngine.isFinished) return;
+
+    this.onRoundFinishedCallback = onRoundFinished;
+    this.playerBehavior.setTactic(playerTacticId);
+
+    const aiTacticId = this.currentFightEngine.chooseAITactic();
+    this.oppBehavior.setTactic(aiTacticId);
+
+    const isEn = window.app && window.app.lang === 'en';
+    const roundNum = this.currentFightEngine.currentRound;
+    this.currentFightEngine.addCommentary(isEn ? `--- ROUND ${roundNum} STARTED ---` : `--- ROUND ${roundNum} BAŞLADI ---`, 'header');
+
+    // 3 exchanges per round (matching original engine)
+    this.exchangesRemainingInRound = 3;
+    this.roundPlayerPoints = 0;
+    this.roundAIPoints = 0;
+    this.currentPlayerTactic = playerTacticId;
+    this.currentAiTactic = aiTacticId;
+    this.lastExchangeTime = performance.now();
+    this.lastAmbientTime = performance.now();
+
+    // Move fighters towards center
+    this.playerMove.setTarget(this.arena.centerX - 40, this.arena.centerY);
+    this.oppMove.setTarget(this.arena.centerX + 40, this.arena.centerY);
+  }
+
+  executeNextExchangeInRound() {
+    if (!this.currentFightEngine || this.exchangesRemainingInRound <= 0) return;
+
+    this.exchangesRemainingInRound--;
+
+    const engine = this.currentFightEngine;
+    const pEff = engine.calculateTacticEfficiency(engine.player, this.currentPlayerTactic, engine.state.player) * (0.85 + Math.random() * 0.3);
+    const aiEff = engine.calculateTacticEfficiency(engine.opponent, this.currentAiTactic, engine.state.opponent) * (0.85 + Math.random() * 0.3);
+
+    const result = engine.simulateExchange(this.currentPlayerTactic, this.currentAiTactic, pEff, aiEff);
+
+    // === Accumulate exchange scores for proper round scoring ===
+    this.roundPlayerPoints += result.pScore;
+    this.roundAIPoints += result.aiScore;
+
+    // Visual strike / grapple effect triggers
+    if (this.currentPlayerTactic === 'takedown' || this.currentAiTactic === 'takedown') {
+      this.anim.triggerTakedownEffect(this.playerMove, this.oppMove);
+    } else if (this.currentPlayerTactic === 'clinch' || this.currentAiTactic === 'clinch') {
+      this.anim.triggerClinchEffect(this.playerMove, this.oppMove);
+    } else if (this.currentPlayerTactic === 'submission' || this.currentAiTactic === 'submission') {
+      this.anim.triggerSubmissionEffect(this.playerMove, this.oppMove);
+    } else if (this.currentPlayerTactic === 'kicks' || this.currentAiTactic === 'kicks') {
+      if (this.currentPlayerTactic === 'kicks') {
+        this.anim.triggerKickEffect(this.playerMove, this.oppMove);
+      } else {
+        this.anim.triggerKickEffect(this.oppMove, this.playerMove);
+      }
+    } else {
+      const isCrit = pEff > aiEff * 1.3 || aiEff > pEff * 1.3;
+      if (pEff >= aiEff) {
+        this.anim.triggerPunchEffect(this.playerMove, this.oppMove, isCrit);
+      } else {
+        this.anim.triggerPunchEffect(this.oppMove, this.playerMove, isCrit);
+      }
+    }
+
+    // Check finish conditions (KO / Submission)
+    const roundNum = engine.currentRound;
+    const isEn = window.app && window.app.lang === 'en';
+
+    if (engine.state.opponent.headHp <= 0 || engine.state.opponent.bodyHp <= 0) {
+      engine.addCommentary(isEn ? `💥 INCREDIBLE KO! ${engine.player.name} KNOCKED OUT ${engine.opponent.name}!` : `💥 İNANILMAZ KO! ${engine.player.name} RAKİBİNİ YERE SERDİ VE DÖVÜŞÜ BİTİRDİ!`, 'finish');
+      engine.isFinished = true;
+      this.finishRound({ winner: 'player', method: 'KO', round: roundNum });
+      return;
+    }
+    if (engine.state.player.headHp <= 0 || engine.state.player.bodyHp <= 0) {
+      engine.addCommentary(isEn ? `💥 KNOCKOUT! ${engine.opponent.name} KNOCKED YOU OUT!` : `💥 NAKAVT! ${engine.opponent.name} MÜTHİŞ BİR VURUŞLA SENİ NAKAVT ETTİ!`, 'danger');
+      engine.isFinished = true;
+      this.finishRound({ winner: 'opponent', method: 'KO', round: roundNum });
+      return;
+    }
+    if (engine.state.opponent.subDanger >= 100) {
+      engine.addCommentary(isEn ? `🥋 SUBMISSION! ${engine.player.name} SUBMITTED ${engine.opponent.name}!` : `🥋 PES ETTİRME! ${engine.player.name} RAKİBİNİ PES ETTİRDİ (SUBMISSION)!`, 'finish');
+      engine.isFinished = true;
+      this.finishRound({ winner: 'player', method: 'Submission', round: roundNum });
+      return;
+    }
+    if (engine.state.player.subDanger >= 100) {
+      engine.addCommentary(isEn ? `🥋 SUBMISSION! ${engine.opponent.name} SUBMITTED YOU!` : `🥋 PES ETTİRME! ${engine.opponent.name} SENİ PES ETTİRDİ (SUBMISSION)!`, 'danger');
+      engine.isFinished = true;
+      this.finishRound({ winner: 'opponent', method: 'Submission', round: roundNum });
+      return;
+    }
+
+    if (this.exchangesRemainingInRound === 0) {
+      // === PROPER ROUND SCORING (matching original fightEngine.playRound logic) ===
+      let pScore = 10;
+      let aiScore = 10;
+      const diff = this.roundPlayerPoints - this.roundAIPoints;
+      if (diff > 15) { pScore = 10; aiScore = 8; }
+      else if (diff > 0) { pScore = 10; aiScore = 9; }
+      else if (diff < -15) { pScore = 8; aiScore = 10; }
+      else { pScore = 9; aiScore = 10; }
+
+      engine.state.roundScores.push({ player: pScore, opponent: aiScore });
+      engine.addCommentary(isEn ? `🔔 Round ${roundNum} Ended. Judges Score: ${pScore} - ${aiScore}` : `🔔 Round ${roundNum} Sona Erdi. Hakem Puan Eğilimi: ${pScore} - ${aiScore}`, 'info');
+
+      // === Stamina Recovery & SubDanger Reset (matching original engine) ===
+      engine.state.player.stamina = Math.min(100, engine.state.player.stamina + 10);
+      engine.state.opponent.stamina = Math.min(100, engine.state.opponent.stamina + 10);
+      engine.state.player.subDanger = 0;
+      engine.state.opponent.subDanger = 0;
+
+      engine.currentRound++;
+      if (engine.currentRound > engine.totalRounds) {
+        engine.isFinished = true;
+        let totalP = 0, totalAI = 0;
+        engine.state.roundScores.forEach(r => { totalP += r.player; totalAI += r.opponent; });
+
+        if (totalP > totalAI) {
+          engine.addCommentary(isEn ? `🏆 WINNER BY UNANIMOUS DECISION: ${engine.player.name}!` : `🏆 OYBİRLİĞİ İLE KAZANAN (Unanimous Decision): ${engine.player.name}!`, 'finish');
+          this.finishRound({ winner: 'player', method: 'Decision', scores: `${totalP}-${totalAI}` });
+        } else if (totalAI > totalP) {
+          engine.addCommentary(isEn ? `❌ WINNER BY DECISION: ${engine.opponent.name}!` : `❌ HAKEM KARARI İLE KAZANAN: ${engine.opponent.name}!`, 'danger');
+          this.finishRound({ winner: 'opponent', method: 'Decision', scores: `${totalP}-${totalAI}` });
+        } else {
+          engine.addCommentary(isEn ? `⚖️ DRAW (Split Draw)!` : `⚖️ BERABERE (Split Draw)!`, 'info');
+          this.finishRound({ winner: 'draw', method: 'Draw', scores: `${totalP}-${totalAI}` });
+        }
+      } else {
+        this.finishRound({ ongoing: true, currentRound: engine.currentRound });
+      }
+    }
+  }
+
+  finishRound(outcome) {
+    this.exchangesRemainingInRound = 0;
+    if (typeof this.onRoundFinishedCallback === 'function') {
+      this.onRoundFinishedCallback(outcome);
+    }
+  }
+}
+
+
 /* --- app.js --- */
 // MMA GOAT - Main Application Orchestrator
+
 
 
 
@@ -2408,6 +4176,8 @@ const TRANSLATIONS = {
     btnNewCareer: '🚀 Yeni Kariyer Başlat',
     btnDeleteSave: '🗑️ Kayıtlı Kariyeri Sil',
     homeMenu: '🏠 Ana Menü',
+    btnBack: '⬅️ Geri',
+    btnBackMenu: '⬅️ Ana Menü',
 
     newFighter: '🥋 Yeni Dövüşçü',
     labelName: 'İsim',
@@ -2514,6 +4284,8 @@ const TRANSLATIONS = {
     btnNewCareer: '🚀 Start New Career',
     btnDeleteSave: '🗑️ Delete Saved Career',
     homeMenu: '🏠 Main Menu',
+    btnBack: '⬅️ Back',
+    btnBackMenu: '⬅️ Main Menu',
 
     newFighter: '🥋 New Fighter',
     labelName: 'Name',
@@ -2623,9 +4395,81 @@ class MMAGoatApp {
     this.selectedStyleKey = 'boxer';
     this.lang = localStorage.getItem('mma_goat_lang') || 'tr';
     this.adManager = new AdManager();
+    this.screenHistory = [];
+    this.currentScreenId = 'screen-main-menu';
 
     this.initUI();
+    this.initHistoryAndBackButton();
     this.checkExistingSave();
+  }
+
+  initHistoryAndBackButton() {
+    try {
+      history.replaceState({ screenId: 'screen-main-menu' }, '');
+    } catch (e) {}
+
+    window.addEventListener('popstate', (e) => {
+      if (e.state && e.state.screenId) {
+        this.switchScreen(e.state.screenId, true);
+      } else if (this.screenHistory.length > 0) {
+        this.goBack(true);
+      }
+    });
+
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+      try {
+        window.Capacitor.Plugins.App.addListener('backButton', () => {
+          if (this.canGoBack()) {
+            this.goBack();
+          } else if (window.Capacitor.Plugins.App.minimizeApp) {
+            window.Capacitor.Plugins.App.minimizeApp();
+          }
+        });
+      } catch (e) {
+        console.log('Capacitor App listener note:', e);
+      }
+    }
+  }
+
+  canGoBack() {
+    if (this.currentScreenId === 'screen-creation') return true;
+    if (this.screenHistory.length > 0) return true;
+    if (this.player && this.currentScreenId !== 'screen-dashboard' && this.currentScreenId !== 'screen-main-menu') return true;
+    return false;
+  }
+
+  goBack(isPopState = false) {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+
+    if (this.currentScreenId === 'screen-creation') {
+      this.screenHistory = [];
+      if (!isPopState) {
+        try { history.pushState({ screenId: 'screen-main-menu' }, ''); } catch (e) {}
+      }
+      this.switchScreen('screen-main-menu', true);
+      return;
+    }
+
+    if (this.screenHistory.length > 0) {
+      const prevScreen = this.screenHistory.pop();
+      if (!isPopState) {
+        try { history.back(); } catch (e) {}
+      }
+      this.switchScreen(prevScreen, true);
+      return;
+    }
+
+    if (this.player && this.currentScreenId !== 'screen-dashboard') {
+      if (!isPopState) {
+        try { history.pushState({ screenId: 'screen-dashboard' }, ''); } catch (e) {}
+      }
+      this.switchScreen('screen-dashboard', true);
+    } else {
+      if (!isPopState) {
+        try { history.pushState({ screenId: 'screen-main-menu' }, ''); } catch (e) {}
+      }
+      this.switchScreen('screen-main-menu', true);
+    }
   }
 
   t(key) {
@@ -2662,7 +4506,7 @@ class MMAGoatApp {
       const key = el.dataset.i18n;
       const translation = this.t(key);
       if (translation) {
-        el.innerText = translation;
+        el.innerHTML = translation;
       }
     });
 
@@ -2761,6 +4605,9 @@ class MMAGoatApp {
 
       // Reconstruct Fighter
       this.player = new Fighter(data.player);
+      if (!this.player.id || !this.player.id.startsWith('player_main')) {
+        this.player.id = 'player_main_' + Date.now();
+      }
 
       // Reconstruct CareerManager
       this.career = new CareerManager(this.player, data.career);
@@ -2774,12 +4621,25 @@ class MMAGoatApp {
         this.career.financialHistory = data.career.financialHistory || [];
         this.career.activeSponsorships = data.career.activeSponsorships || [];
 
+        const seenIds = new Set([this.player.id]);
+
         // Reconstruct amateur rankings safely
         if (data.career.amateurRankings && Array.isArray(data.career.amateurRankings)) {
           this.career.amateurRankings = data.career.amateurRankings
             .filter(rData => rData !== null && rData !== undefined)
             .map(rData => {
-              if (rData.id === this.player.id) return this.player;
+              if (rData.id === this.player.id || rData.name === this.player.name) {
+                if (rData.name && rData.name !== this.player.name) {
+                  rData.id = 'ai_am_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+                  seenIds.add(rData.id);
+                  return new Fighter(rData);
+                }
+                return this.player;
+              }
+              if (seenIds.has(rData.id)) {
+                rData.id = 'ai_am_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+              }
+              seenIds.add(rData.id);
               return new Fighter(rData);
             });
         } else {
@@ -2791,7 +4651,18 @@ class MMAGoatApp {
           this.career.rankings = data.career.rankings
             .filter(rData => rData !== null && rData !== undefined)
             .map(rData => {
-              if (rData.id === this.player.id) return this.player;
+              if (rData.id === this.player.id || rData.name === this.player.name) {
+                if (rData.name && rData.name !== this.player.name) {
+                  rData.id = 'ai_pro_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+                  seenIds.add(rData.id);
+                  return new Fighter(rData);
+                }
+                return this.player;
+              }
+              if (seenIds.has(rData.id)) {
+                rData.id = 'ai_pro_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+              }
+              seenIds.add(rData.id);
               return new Fighter(rData);
             });
         }
@@ -2820,7 +4691,8 @@ class MMAGoatApp {
       document.getElementById('main-nav-tabs').style.display = 'flex';
       document.querySelector('main')?.classList.remove('no-header', 'no-nav');
 
-      this.switchScreen('screen-dashboard');
+      this.screenHistory = [];
+      this.switchScreen('screen-dashboard', true);
       this.updateHeaderAndDashboard();
       return true;
     } catch (e) {
@@ -2930,10 +4802,21 @@ class MMAGoatApp {
     document.getElementById('btn-return-menu')?.addEventListener('click', () => {
       sfx.playClick();
       this.saveGame();
+      this.screenHistory = [];
       document.getElementById('top-header').style.display = 'none';
       document.getElementById('main-nav-tabs').style.display = 'none';
       document.querySelector('main')?.classList.add('no-header', 'no-nav');
-      this.switchScreen('screen-main-menu');
+      this.switchScreen('screen-main-menu', true);
+    });
+
+    // Cancel Character Creation / Back Button
+    document.getElementById('btn-cancel-creation')?.addEventListener('click', () => {
+      this.goBack();
+    });
+
+    // Top Header Back Button
+    document.getElementById('btn-header-back')?.addEventListener('click', () => {
+      this.goBack();
     });
 
     // Start Career Button
@@ -2995,6 +4878,7 @@ class MMAGoatApp {
     const socialHandle = socialRaw || '@' + name.toLowerCase().replace(/\s+/g, '');
 
     this.player = new Fighter({
+      id: 'player_main_' + Date.now(),
       name: name,
       age: 18,
       country: countryObj,
@@ -3013,11 +4897,28 @@ class MMAGoatApp {
     document.getElementById('main-nav-tabs').style.display = 'flex';
     document.querySelector('main')?.classList.remove('no-header', 'no-nav');
 
-    this.switchScreen('screen-dashboard');
+    this.screenHistory = [];
+    this.switchScreen('screen-dashboard', true);
     this.updateHeaderAndDashboard();
   }
 
-  switchScreen(screenId) {
+  switchScreen(screenId, isBack = false) {
+    if (!screenId) return;
+
+    // Don't push duplicate adjacent screen
+    if (!isBack && this.currentScreenId && this.currentScreenId !== screenId) {
+      this.screenHistory.push(this.currentScreenId);
+      try {
+        history.pushState({ screenId }, '');
+      } catch (e) {}
+    }
+
+    if (screenId === 'screen-main-menu') {
+      this.screenHistory = [];
+    }
+
+    this.currentScreenId = screenId;
+
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const targetScreen = document.getElementById(screenId);
     if (targetScreen) targetScreen.classList.add('active');
@@ -3030,6 +4931,16 @@ class MMAGoatApp {
         btn.classList.remove('active');
       }
     });
+
+    // Update Top Header Back Button visibility
+    const headerBackBtn = document.getElementById('btn-header-back');
+    if (headerBackBtn) {
+      if (this.player && (this.screenHistory.length > 0 || screenId !== 'screen-dashboard')) {
+        headerBackBtn.style.display = 'inline-flex';
+      } else {
+        headerBackBtn.style.display = 'none';
+      }
+    }
 
     // Update screen specific content
     if (screenId === 'screen-dashboard') this.updateHeaderAndDashboard();
@@ -3518,6 +5429,14 @@ class MMAGoatApp {
     const oppStyleEl = document.getElementById('fight-opp-style');
     if (oppStyleEl) oppStyleEl.innerText = oppStyle;
 
+    const canvasEl = document.getElementById('fight-octagon-canvas');
+    if (canvasEl) {
+      if (!this.roundSimController) {
+        this.roundSimController = new RoundSimulationController(canvasEl);
+      }
+      this.roundSimController.initArena(this.fightEngine);
+    }
+
     this.renderTacticsButtons();
     this.updateFightUI();
   }
@@ -3543,20 +5462,44 @@ class MMAGoatApp {
     if (!this.fightEngine || this.fightEngine.isFinished) return;
 
     sfx.playPunch();
-    const outcome = this.fightEngine.playRound(tacticId);
 
-    this.updateFightUI();
+    // Disable tactics buttons during visual round simulation
+    const tacticBtns = document.querySelectorAll('.tactic-btn');
+    tacticBtns.forEach(b => b.style.pointerEvents = 'none');
 
-    if (outcome && outcome.winner) {
-      sfx.playBell();
-      if (outcome.winner === 'player') sfx.playCrowdCheer();
+    if (this.roundSimController) {
+      this.roundSimController.startRoundSimulation(tacticId, (outcome) => {
+        tacticBtns.forEach(b => b.style.pointerEvents = 'auto');
+        this.updateFightUI();
 
-      const resultObj = this.career.handlePostFightResults(outcome, this.fightEngine.opponent);
-      this.saveGame();
+        if (outcome && outcome.winner) {
+          sfx.playBell();
+          if (outcome.winner === 'player') sfx.playCrowdCheer();
 
-      setTimeout(() => {
-        this.showFightResultModal(outcome, resultObj);
-      }, 700);
+          const resultObj = this.career.handlePostFightResults(outcome, this.fightEngine.opponent);
+          this.saveGame();
+
+          setTimeout(() => {
+            this.showFightResultModal(outcome, resultObj);
+          }, 700);
+        }
+      });
+    } else {
+      const outcome = this.fightEngine.playRound(tacticId);
+      tacticBtns.forEach(b => b.style.pointerEvents = 'auto');
+      this.updateFightUI();
+
+      if (outcome && outcome.winner) {
+        sfx.playBell();
+        if (outcome.winner === 'player') sfx.playCrowdCheer();
+
+        const resultObj = this.career.handlePostFightResults(outcome, this.fightEngine.opponent);
+        this.saveGame();
+
+        setTimeout(() => {
+          this.showFightResultModal(outcome, resultObj);
+        }, 700);
+      }
     }
   }
 

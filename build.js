@@ -12,6 +12,13 @@ const files = [
   'career.js',
   'fightEngine.js',
   'adManager.js',
+  'arenaManager.js',
+  'fighterMovementController.js',
+  'fighterBehaviorController.js',
+  'arenaCollisionManager.js',
+  'combatAnimationController.js',
+  'visualFightRenderer.js',
+  'roundSimulationController.js',
   'app.js'
 ];
 
