@@ -19,7 +19,7 @@
 },
 "devDependencies": {
     "@capacitor/cli": "^7.0.0"
-}
+},
   "author": "Antigravity",
   "license": "ISC"
 }
