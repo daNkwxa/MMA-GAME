@@ -2212,6 +2212,13 @@ class AdManager {
 
   // Initialize AdMob Plugin / Web Fallback Bridge
   async initAdMob() {
+    if (this.platform === 'ios') {
+      console.log('[AdManager] Ads disabled for iOS platform.');
+      this.isNativePluginAvailable = false;
+      this.isAdReady = true;
+      return;
+    }
+
     try {
       if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
         const { AdMob } = window.Capacitor.Plugins;
@@ -2271,6 +2278,12 @@ class AdManager {
   // onSuccess: Callback executed ONLY when the user watches the entire video
   // onCancel: Callback executed if the ad fails or user cancels early
   async showRewardedAd(onSuccess, onCancel) {
+    if (this.platform === 'ios') {
+      console.log('[AdManager] Ads disabled for iOS. Granting reward instantly.');
+      if (typeof onSuccess === 'function') onSuccess();
+      return;
+    }
+
     if (!this.isReady()) {
       // Re-trigger preload and show web simulation fallback if unavailable
       await this.preloadRewardedAd();
