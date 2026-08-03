@@ -4,7 +4,6 @@ import { FIGHT_STYLES, WEIGHT_CLASSES, COUNTRIES, ORGANIZATIONS, GYM_UPGRADES, W
 import { Fighter } from './fighter.js';
 import { CareerManager } from './career.js';
 import { FightEngine } from './fightEngine.js';
-import { AdManager } from './adManager.js';
 import { RoundSimulationController } from './roundSimulationController.js';
 import { sfx } from './audio.js';
 
@@ -237,7 +236,6 @@ class MMAGoatApp {
     this.fightEngine = null;
     this.selectedStyleKey = 'boxer';
     this.lang = localStorage.getItem('mma_goat_lang') || 'tr';
-    this.adManager = new AdManager();
     this.screenHistory = [];
     this.currentScreenId = 'screen-main-menu';
 
@@ -1196,10 +1194,6 @@ class MMAGoatApp {
           <h4>🧘 Sauna & Dinlen</h4>
           <p>+35 ⚡ | Stres (-)</p>
         </div>
-        <div class="tactic-btn" style="border: 1px solid var(--accent-cyan); background: rgba(0,243,255,0.08);" onclick="window.app.watchAdForEnergyBoost()">
-          <h4 style="color: var(--accent-cyan);">🎥 ${isEn ? 'Instant Recovery' : 'Hızlı Enerji'}</h4>
-          <p>${isEn ? 'Watch Ad (+50 Energy)' : 'Reklam İzle (+50 Enerji)'}</p>
-        </div>
       </div>
 
       <!-- Feature 10: Nutrition Section in Training Camp -->
@@ -1394,14 +1388,6 @@ class MMAGoatApp {
 
     this.renderFightResultRewardsGrid();
 
-    const doubleBtn = document.getElementById('btn-fight-result-double-reward');
-    if (doubleBtn) {
-      doubleBtn.style.display = 'block';
-      doubleBtn.disabled = false;
-      doubleBtn.style.opacity = '1';
-      doubleBtn.innerText = isEn ? '🎥 CLAIM 2X FIGHT REWARD (WATCH AD)' : '🎥 2X MAÇ ÖDÜLÜ KAZAN (REKLAM İZLE)';
-    }
-
     const closeBtn = document.getElementById('btn-fight-result-close');
     if (closeBtn) {
       closeBtn.innerText = isEn 
@@ -1447,67 +1433,7 @@ class MMAGoatApp {
     `;
   }
 
-  // Rewarded Ad Action 1: 2x Fight Rewards
-  watchAdForDoubleReward() {
-    if (this.doubleRewardClaimed) return;
-    const isEn = this.lang === 'en';
 
-    sfx.playClick();
-    this.adManager.showRewardedAd(
-      () => {
-        // Reward Callback — Grant 2x rewards!
-        const resultObj = this.lastFightResultObj || {};
-        const bonusMoney = resultObj.totalEarned || 0;
-        const bonusSp = resultObj.spGained || 0;
-        const bonusFame = resultObj.fameGained || 0;
-        const bonusDia = resultObj.diamondReward || 0;
-
-        this.player.money += bonusMoney;
-        this.player.skillPoints = (this.player.skillPoints || 0) + bonusSp;
-        this.player.fame = Math.min(100, this.player.fame + bonusFame);
-        this.player.diamonds = (this.player.diamonds || 0) + bonusDia;
-
-        this.doubleRewardClaimed = true;
-        this.saveGame();
-        this.updateHeaderAndDashboard();
-        this.renderFightResultRewardsGrid();
-
-        const doubleBtn = document.getElementById('btn-fight-result-double-reward');
-        if (doubleBtn) {
-          doubleBtn.disabled = true;
-          doubleBtn.style.opacity = '0.5';
-          doubleBtn.innerText = isEn ? '✅ 2X REWARD CLAIMED!' : '✅ 2X ÖDÜL ALINDI!';
-        }
-
-        sfx.playCrowdCheer();
-        alert(isEn ? '🎉 2x Fight Reward Claimed Successfully!' : '🎉 Tebrikler! 2 Katı Maç Ödülü Hesabınıza Eklendi!');
-      },
-      (reason) => {
-        alert(isEn ? 'Ad was cancelled or not completed. No bonus granted.' : 'Reklam tamamlanmadı veya kapatıldı. Ekstra 2x ödül verilmedi.');
-      }
-    );
-  }
-
-  // Rewarded Ad Action 2: Camp Instant +50 Energy
-  watchAdForEnergyBoost() {
-    if (!this.player) return;
-    const isEn = this.lang === 'en';
-
-    sfx.playClick();
-    this.adManager.showRewardedAd(
-      () => {
-        this.player.energy = Math.min(100, this.player.energy + 50);
-        this.saveGame();
-        this.updateHeaderAndDashboard();
-        this.updateCampView();
-        sfx.playClick();
-        alert(isEn ? '⚡ +50 Energy Boost Claimed!' : '⚡ Tebrikler! Reklam izleyerek +50 Enerji Kazandınız!');
-      },
-      () => {
-        alert(isEn ? 'Ad was cancelled or not completed.' : 'Reklam tamamlanmadı veya kapatıldı. Enerji ödülü verilmedi.');
-      }
-    );
-  }
 
   closeFightResultModal() {
     sfx.playClick();
