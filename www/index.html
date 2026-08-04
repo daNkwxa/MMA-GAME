@@ -274,12 +274,12 @@
         <!-- VS Header -->
         <div class="vs-header">
           <div class="vs-fighter-card">
-            <h3 id="fight-player-name" style="font-size: 1.1rem;">Sen</h3>
-            <p id="fight-player-style" style="color: var(--accent-cyan); font-size: 0.8rem;">Boxer</p>
-            <div style="margin-top: 0.4rem; text-align: left;">
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Head HP:</span>
+            <h3 id="fight-player-name">Sen</h3>
+            <p id="fight-player-style" style="color: var(--accent-cyan);">Boxer</p>
+            <div style="margin-top: 0.15rem; text-align: left;">
+              <span style="font-size: 0.68rem; color: var(--text-muted);">Head HP:</span>
               <div class="bar-container"><div id="fight-p-head" class="bar-fill fill-cyan" style="width: 100%;"></div></div>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Stamina:</span>
+              <span style="font-size: 0.68rem; color: var(--text-muted);">Stamina:</span>
               <div class="bar-container"><div id="fight-p-stam" class="bar-fill fill-green" style="width: 100%;"></div></div>
             </div>
           </div>
@@ -287,20 +287,20 @@
           <div class="vs-circle">VS</div>
 
           <div class="vs-fighter-card">
-            <h3 id="fight-opp-name" style="font-size: 1.1rem;">Rakip</h3>
-            <p id="fight-opp-style" style="color: var(--accent-red); font-size: 0.8rem;">Kickboxer</p>
-            <div style="margin-top: 0.4rem; text-align: left;">
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Head HP:</span>
+            <h3 id="fight-opp-name">Rakip</h3>
+            <p id="fight-opp-style" style="color: var(--accent-red);">Kickboxer</p>
+            <div style="margin-top: 0.15rem; text-align: left;">
+              <span style="font-size: 0.68rem; color: var(--text-muted);">Head HP:</span>
               <div class="bar-container"><div id="fight-opp-head" class="bar-fill fill-red" style="width: 10%;"></div></div>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Stamina:</span>
+              <span style="font-size: 0.68rem; color: var(--text-muted);">Stamina:</span>
               <div class="bar-container"><div id="fight-opp-stam" class="bar-fill fill-green" style="width: 100%;"></div></div>
             </div>
           </div>
         </div>
 
         <!-- 2D Octagon Arena Canvas Visual Simulation -->
-        <div id="fight-arena-canvas-wrapper" style="width: 100%; display: flex; justify-content: center; align-items: center; margin: 0.6rem 0; position: relative;">
-          <canvas id="fight-octagon-canvas" width="600" height="380" style="border-radius: 12px; background: #0f172a; box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-width: 100%; height: auto; border: 1px solid rgba(56, 189, 248, 0.3);"></canvas>
+        <div id="fight-arena-canvas-wrapper" style="width: 100%; display: flex; justify-content: center; align-items: center; position: relative;">
+          <canvas id="fight-octagon-canvas" width="600" height="300" style="border-radius: 12px; background: #0f172a; box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-width: 100%; height: auto; border: 1px solid rgba(56, 189, 248, 0.3);"></canvas>
         </div>
 
         <!-- Live Commentary Box -->
@@ -309,7 +309,7 @@
         </div>
 
         <!-- Tactic Action Buttons -->
-        <h3 style="margin-bottom: 0.6rem; text-align: left; font-size: 1rem;" data-i18n="chooseTactic">Round Taktik Kararı:</h3>
+        <h3 class="tactics-heading" data-i18n="chooseTactic">Round Taktik Kararı:</h3>
         <div id="tactics-buttons-container" class="tactics-grid">
           <!-- Dynamically populated tactic buttons -->
         </div>

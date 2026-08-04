@@ -1462,7 +1462,7 @@ class MMAGoatApp {
       box.innerHTML = this.fightEngine.commentary.map(c => `
         <div class="commentary-line ${c.type}">${c.text}</div>
       `).join('');
-      box.scrollTop = 0;
+      box.scrollTop = box.scrollHeight;
     }
   }
 

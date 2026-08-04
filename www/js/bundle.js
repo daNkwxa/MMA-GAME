@@ -3587,7 +3587,7 @@ class RoundSimulationController {
         ? this.canvas.parentElement.clientWidth
         : 580;
       const containerWidth = Math.min(600, parentW);
-      const canvasHeight = Math.round(containerWidth * 0.62);
+      const canvasHeight = Math.round(containerWidth * 0.50);
       this.arena.resize(containerWidth, canvasHeight);
     }
 
@@ -5408,7 +5408,7 @@ class MMAGoatApp {
       box.innerHTML = this.fightEngine.commentary.map(c => `
         <div class="commentary-line ${c.type}">${c.text}</div>
       `).join('');
-      box.scrollTop = 0;
+      box.scrollTop = box.scrollHeight;
     }
   }
 
